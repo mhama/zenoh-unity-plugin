@@ -24,6 +24,95 @@ namespace Zenoh.Plugins
         internal const ulong DEFAULT_SCOUTING_TIMEOUT = 1000;
 
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_bytes_from_buf_deleter_delegate(void* data, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_bytes_from_str_deleter_delegate(void* data, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_hello_call_delegate(z_loaned_hello_t* hello, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_hello_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_link_call_delegate(z_loaned_link_t* link, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_link_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_link_event_call_delegate(z_loaned_link_event_t* @event, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_link_event_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_matching_status_call_delegate(z_matching_status_t* matching_status, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_matching_status_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_query_call_delegate(z_loaned_query_t* query, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_query_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_reply_call_delegate(z_loaned_reply_t* reply, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_reply_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_sample_call_delegate(z_loaned_sample_t* sample, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_sample_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_transport_call_delegate(z_loaned_transport_t* transport, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_transport_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_transport_event_call_delegate(z_loaned_transport_event_t* @event, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_transport_event_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_zid_call_delegate(z_id_t* z_id, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_closure_zid_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_slice_from_buf_drop_delegate(void* data, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void z_string_from_str_drop_delegate(void* value, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void zc_closure_log_call_delegate(zc_log_severity_t severity, z_loaned_string_t* msg, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void zc_closure_log_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void ze_closure_miss_call_delegate(ze_miss_t* matching_status, void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void ze_closure_miss_drop_delegate(void* context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void* z_task_init_fun_delegate(void* arg);
+
+
+
         /// <summary>
         ///  Constructs a queryable in its gravestone value.
         /// </summary>
@@ -154,10 +243,10 @@ namespace Zenoh.Plugins
         /// <summary>
         ///  Sends a reply to a query.
         ///
-        ///  This function must be called inside of a Queryable callback passing the
-        ///  query received as parameters of the callback function. This function can
-        ///  be called multiple times to send multiple replies to a query. The reply
-        ///  will be considered complete when the Queryable callback returns.
+        ///  This function can be called multiple times to send multiple replies to a
+        ///  query. The query will be considered finalized when the query object has no
+        ///  live references, allowing `z_query_clone()` or `z_query_take_from_loaned()`
+        ///  to be used to produce replies outside of the Queryable callback.
         ///
         ///  @param this_: The query to reply to.
         ///  @param key_expr: The key of this reply.
@@ -172,10 +261,10 @@ namespace Zenoh.Plugins
         /// <summary>
         ///  Sends a error reply to a query.
         ///
-        ///  This function must be called inside of a Queryable callback passing the
-        ///  query received as parameters of the callback function. This function can
-        ///  be called multiple times to send multiple replies to a query. The reply
-        ///  will be considered complete when the Queryable callback returns.
+        ///  This function can be called multiple times to send multiple replies to a
+        ///  query. The query will be considered finalized when the query object has no
+        ///  live references, allowing `z_query_clone()` or `z_query_take_from_loaned()`
+        ///  to be used to produce replies outside of the Queryable callback.
         ///
         ///  @param this_: The query to reply to.
         ///  @param payload: The payload carrying error message. Will be consumed.
@@ -189,10 +278,10 @@ namespace Zenoh.Plugins
         /// <summary>
         ///  Sends a delete reply to a query.
         ///
-        ///  This function must be called inside of a Queryable callback passing the
-        ///  query received as parameters of the callback function. This function can
-        ///  be called multiple times to send multiple replies to a query. The reply
-        ///  will be considered complete when the Queryable callback returns.
+        ///  This function can be called multiple times to send multiple replies to a
+        ///  query. The query will be considered finalized when the query object has no
+        ///  live references, allowing `z_query_clone()` or `z_query_take_from_loaned()`
+        ///  to be used to produce replies outside of the Queryable callback.
         ///
         ///  @param this_: The query to reply to.
         ///  @param key_expr: The key of this delete reply.
@@ -256,11 +345,31 @@ namespace Zenoh.Plugins
         internal static extern z_loaned_bytes_t* z_query_attachment_mut(z_loaned_query_t* this_);
 
         /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns the query source_info. Will return NULL, if source info is not set.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_query_source_info", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_source_info_t* z_query_source_info(z_loaned_query_t* this_);
+
+        /// <summary>
+        ///  @brief Gets the accept replies setting of the query,
+        ///  i.e. which replies are accepted by the query originator.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_query_accepts_replies", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_reply_keyexpr_t z_query_accepts_replies(z_loaned_query_t* this_);
+
+        /// <summary>
         ///  Undeclares a `z_owned_queryable_t`.
         ///  Returns 0 in case of success, negative error code otherwise.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_undeclare_queryable", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_result_t z_undeclare_queryable(z_moved_queryable_t* this_);
+
+        /// <summary>
+        ///  @brief Returns the key expression of the queryable.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_queryable_keyexpr", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_keyexpr_t* z_queryable_keyexpr(z_loaned_queryable_t* queryable);
 
         /// <summary>
         ///  Borrows session.
@@ -290,6 +399,25 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_open", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_result_t z_open(z_owned_session_t* @this, z_moved_config_t* config, z_open_options_t* _options);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Each session's runtime may create its own provider to manage internal optimizations.  
+        ///  This method exposes that provider so it can also be accessed at the application level.
+        ///
+        ///  Note that the provider may not be immediately available or may be disabled via configuration.
+        ///  Provider initialization is concurrent and triggered by access events (both transport-internal and through this API).
+        ///
+        ///  To use this provider, both *shared_memory* and *transport_optimization* config sections must be enabled.
+        ///
+        ///  @param out_provider: A [`z_owned_shared_shm_provider_t`](z_owned_shared_shm_provider_t) object that will be
+        ///  initialized from Session's provider if it exists. Initialized only if the returned value is `Z_OK`.
+        ///  @param out_state: A [`z_shm_provider_state`](z_shm_provider_state) that indicates the status of the provider.
+        ///  Always initialized by this function.
+        ///  @return 0 in case if provider is avalable, negative error code otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_obtain_shm_provider", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_obtain_shm_provider(z_loaned_session_t* @this, z_owned_shared_shm_provider_t* out_provider, z_shm_provider_state* out_state);
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
@@ -336,6 +464,13 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_session_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_session_drop(z_moved_session_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns the ID of the session.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_session_id", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_entity_global_id_t z_session_id(z_loaned_session_t* session);
 
         /// <summary>
         ///  Constructs a subscriber in a gravestone state.
@@ -1047,6 +1182,14 @@ namespace Zenoh.Plugins
         internal static extern z_result_t zc_config_from_str(z_owned_config_t* @this, byte* s);
 
         /// <summary>
+        ///  Reads a configuration from a JSON-serialized substring of specified lenght, such as '{mode:"client",connect:{endpoints:["tcp/127.0.0.1:7447"]}}'.
+        ///
+        ///  Returns 0 in case of success, negative error code otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "zc_config_from_substr", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t zc_config_from_substr(z_owned_config_t* @this, byte* s, nuint len);
+
+        /// <summary>
         ///  Constructs a json string representation of the `config`, such as '{"mode":"client","connect":{"endpoints":["tcp/127.0.0.1:7447"]}}'.
         ///
         ///  Returns 0 in case of success, negative error code otherwise.
@@ -1055,12 +1198,20 @@ namespace Zenoh.Plugins
         internal static extern z_result_t zc_config_to_string(z_loaned_config_t* config, z_owned_string_t* out_config_string);
 
         /// <summary>
-        ///  Constructs a configuration by parsing a file at `path`. Currently supported format is JSON5, a superset of JSON.
+        ///  Constructs a configuration by parsing a file at `path` null-terminated string. Currently supported format is JSON5, a superset of JSON.
         ///
         ///  Returns 0 in case of success, negative error code otherwise.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "zc_config_from_file", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_result_t zc_config_from_file(z_owned_config_t* @this, byte* path);
+
+        /// <summary>
+        ///  Constructs a configuration by parsing a file at `path` susbstring of specified length. Currently supported format is JSON5, a superset of JSON.
+        ///
+        ///  Returns 0 in case of success, negative error code otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "zc_config_from_file_substr", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t zc_config_from_file_substr(z_owned_config_t* @this, byte* path, nuint len);
 
         /// <summary>
         ///  Constructs a configuration by parsing a file path stored in ZENOH_CONFIG environmental variable.
@@ -1787,12 +1938,12 @@ namespace Zenoh.Plugins
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Gets the id of the zenoh instance that answered this Reply.
+        ///  @brief Gets the global id of the zenoh entity that answered this Reply.
         ///  @return `true` if id is present.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_reply_replier_id", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool z_reply_replier_id(z_loaned_reply_t* @this, z_id_t* out_id);
+        internal static extern bool z_reply_replier_id(z_loaned_reply_t* @this, z_entity_global_id_t* out_id);
 
         /// <summary>
         ///  Constructs the reply in its gravestone state.
@@ -1818,7 +1969,7 @@ namespace Zenoh.Plugins
         ///
         ///  @param session: The zenoh session.
         ///  @param key_expr: The key expression matching resources to query.
-        ///  @param parameters: The query's parameters, similar to a url's query segment.
+        ///  @param parameters: The query's parameters null-terminated string, similar to a url's query segment.
         ///  @param callback: The callback function that will be called on reception of replies for this query. It will be automatically dropped once all replies are processed.
         ///  @param options: Additional options for the get. All owned fields will be consumed.
         ///
@@ -1826,6 +1977,22 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_get", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_result_t z_get(z_loaned_session_t* session, z_loaned_keyexpr_t* key_expr, byte* parameters, z_moved_closure_reply_t* callback, z_get_options_t* options);
+
+        /// <summary>
+        ///  Query data from the matching queryables in the system.
+        ///  Replies are provided through a callback function.
+        ///
+        ///  @param session: The zenoh session.
+        ///  @param key_expr: The key expression matching resources to query.
+        ///  @param parameters: The query's parameters string, similar to a url's query segment.
+        ///  @param parameters_len: The parameters substring length.
+        ///  @param callback: The callback function that will be called on reception of replies for this query. It will be automatically dropped once all replies are processed.
+        ///  @param options: Additional options for the get. All owned fields will be consumed.
+        ///
+        ///  @return 0 in case of success, a negative error value upon failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_get_with_parameters_substr", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_get_with_parameters_substr(z_loaned_session_t* session, z_loaned_keyexpr_t* key_expr, byte* parameters, nuint parameters_len, z_moved_closure_reply_t* callback, z_get_options_t* options);
 
         /// <summary>
         ///  Frees reply, resetting it to its gravestone state.
@@ -2186,7 +2353,6 @@ namespace Zenoh.Plugins
         internal static extern z_loaned_keyexpr_t* z_publisher_keyexpr(z_loaned_publisher_t* publisher);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Constructs matching listener, registering a callback for notifying subscribers matching with a given publisher.
         ///
         ///  @param publisher: A publisher to associate with matching listener.
@@ -2199,7 +2365,6 @@ namespace Zenoh.Plugins
         internal static extern z_result_t z_publisher_declare_matching_listener(z_loaned_publisher_t* publisher, z_owned_matching_listener_t* matching_listener, z_moved_closure_matching_status_t* callback);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Declares a matching listener, registering a callback for notifying subscribers matching with a given publisher.
         ///  The callback will be run in the background until the corresponding publisher is dropped.
         ///
@@ -2212,7 +2377,6 @@ namespace Zenoh.Plugins
         internal static extern z_result_t z_publisher_declare_background_matching_listener(z_loaned_publisher_t* publisher, z_moved_closure_matching_status_t* callback);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Gets publisher matching status - i.e. if there are any subscribers matching its key expression.
         ///
         ///  @return 0 in case of success, negative error code otherwise (in this case matching_status is not updated).
@@ -2368,6 +2532,765 @@ namespace Zenoh.Plugins
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Get the zenoh id from the `z_loaned_transport_t`.
+        ///
+        ///  Returns the zenoh id of the transport.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_zid", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_id_t z_transport_zid(z_loaned_transport_t* transport);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Get the whatami from the `z_loaned_transport_t`.
+        ///
+        ///  Returns the whatami (node type) of the remote node.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_whatami", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_whatami_t z_transport_whatami(z_loaned_transport_t* transport);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Check if the transport supports QoS.
+        ///
+        ///  Returns true if the transport supports QoS, false otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_is_qos", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_transport_is_qos(z_loaned_transport_t* transport);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Check if the transport is multicast.
+        ///
+        ///  Returns true if the transport is multicast, false otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_is_multicast", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_transport_is_multicast(z_loaned_transport_t* transport);
+
+        /// <summary>
+        ///  @brief Check if the transport supports shared memory.
+        ///
+        ///  Returns true if the transport supports shared memory, false otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_is_shm", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_transport_is_shm(z_loaned_transport_t* transport);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Clones the transport.
+        ///
+        ///  Creates an owned copy of the transport that can be used independently.
+        ///  The caller is responsible for dropping the cloned transport using `z_drop`.
+        ///
+        ///  @param this_: The destination for the cloned transport.
+        ///  @param transport: The transport to clone.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_clone", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_transport_clone(z_owned_transport_t* this_, z_loaned_transport_t* transport);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Drops the owned transport.
+        ///
+        ///  @param this_: The transport to drop.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_transport_drop(z_moved_transport_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Constructs a transport in its gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_transport_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_transport_null(z_owned_transport_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs a transport with the given parameters. This function is intended for language bindings which stores transport as native objects and needs to recreate them back from their fields.
+        ///
+        ///  This function is only available when shared memory is NOT enabled.
+        ///  Use `zc_internal_create_transport_shm` in shared memory builds.
+        ///
+        ///  @param this_: The destination for the constructed transport.
+        ///  @param zid: The ZenohId of the remote node.
+        ///  @param whatami: The whatami (node type) of the remote node.
+        ///  @param is_qos: Whether the transport supports QoS.
+        ///  @param is_multicast: Whether the transport is multicast.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "zc_internal_create_transport", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void zc_internal_create_transport(z_owned_transport_t* this_, z_id_t zid, z_whatami_t whatami, [MarshalAs(UnmanagedType.U1)] bool is_qos, [MarshalAs(UnmanagedType.U1)] bool is_multicast);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs a transport with the given parameters. This function is intended for
+        ///  language bindings which stores transport as native objects and needs to recreate them back from their fields.
+        ///
+        ///  This function is only available when shared memory IS enabled.
+        ///  Use `zc_internal_create_transport` in non-shared-memory builds.
+        ///
+        ///  @param this_: The destination for the constructed transport.
+        ///  @param zid: The ZenohId of the remote node.
+        ///  @param whatami: The whatami (node type) of the remote node.
+        ///  @param is_qos: Whether the transport supports QoS.
+        ///  @param is_multicast: Whether the transport is multicast.
+        ///  @param is_shm: Whether the transport uses shared memory.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "zc_internal_create_transport_shm", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void zc_internal_create_transport_shm(z_owned_transport_t* this_, z_id_t zid, z_whatami_t whatami, [MarshalAs(UnmanagedType.U1)] bool is_qos, [MarshalAs(UnmanagedType.U1)] bool is_multicast, [MarshalAs(UnmanagedType.U1)] bool is_shm);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Returns ``true`` if transport is valid, ``false`` if it is in gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_transport_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_transport_check(z_owned_transport_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Constructs a link in its gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_link_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_link_null(z_owned_link_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Returns ``true`` if link is valid, ``false`` if it is in gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_link_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_link_check(z_owned_link_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Clones the link.
+        ///
+        ///  Creates an owned copy of the link that can be used independently.
+        ///  The caller is responsible for dropping the cloned link using `z_drop`.
+        ///
+        ///  @param this_: The destination for the cloned link.
+        ///  @param link: The link to clone.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_clone", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_clone(z_owned_link_t* this_, z_loaned_link_t* link);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Drops the owned link.
+        ///
+        ///  @param this_: The link to drop.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_drop(z_moved_link_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a loaned reference from an owned transport.
+        ///
+        ///  @param this_: The owned transport.
+        ///  @return A loaned transport reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_transport_t* z_transport_loan(z_owned_transport_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a mutable loaned reference from an owned transport.
+        ///
+        ///  @param this_: The owned transport.
+        ///  @return A mutable loaned transport reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_transport_t* z_transport_loan_mut(z_owned_transport_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a loaned reference from an owned link.
+        ///
+        ///  @param this_: The owned link.
+        ///  @return A loaned link reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_link_t* z_link_loan(z_owned_link_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a mutable loaned reference from an owned link.
+        ///
+        ///  @param this_: The owned link.
+        ///  @return A mutable loaned link reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_link_t* z_link_loan_mut(z_owned_link_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the transports `z_loaned_transport_t` used by the session.
+        ///
+        ///  The tranport is a connection to another zenoh node. The `z_owned_transport_t`
+        ///  contains the common information related to that connection. The information specific
+        ///  to concrete network protocols are in the muttiple `z_owned_link_t` associated to each transport
+        ///  rereieved by `z_info_links()`.
+        ///
+        ///  Callback will be called once for each transport, is guaranteed to never be called concurrently,
+        ///  and is guaranteed to be dropped before this function exits.
+        ///
+        ///  Returns 0 on success, negative values on failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_info_transports", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_info_transports(z_loaned_session_t* session, z_moved_closure_transport_t* callback);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Constructs the default value for `z_info_links_options_t`.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_info_links_options_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_info_links_options_default(z_info_links_options_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the links `z_loaned_link_t` used by the session.
+        ///
+        ///  The link represents a concrete network connection used by a transport.
+        ///  Each transport may have multiple links associated with it.
+        ///
+        ///  Callback will be called once for each link, is guaranteed to never be called concurrently,
+        ///  and is guaranteed to be dropped before this function exits.
+        ///
+        ///  @param session The session to query links from.
+        ///  @param callback The callback to be called for each link.
+        ///  @param options Optional parameters to filter links. If NULL, returns all links.
+        ///
+        ///  Returns 0 on success, negative values on failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_info_links", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_info_links(z_loaned_session_t* session, z_moved_closure_link_t* callback, z_info_links_options_t* options);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the zenoh id from the `z_loaned_link_t`.
+        ///
+        ///  Returns the zenoh id of the transport this link belongs to.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_zid", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_id_t z_link_zid(z_loaned_link_t* link);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Get the source locator (local endpoint) from the `z_loaned_link_t`.
+        ///
+        ///  Stores the source locator string in `str_out`.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_src", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_src(z_loaned_link_t* link, z_owned_string_t* str_out);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the destination locator (remote endpoint) from the `z_loaned_link_t`.
+        ///
+        ///  Stores the destination locator string in `str_out`.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_dst", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_dst(z_loaned_link_t* link, z_owned_string_t* str_out);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the group locator from the `z_loaned_link_t` (for multicast links).
+        ///
+        ///  Stores the group locator string in `str_out` if present, or initializes a null string otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_group", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_group(z_loaned_link_t* link, z_owned_string_t* str_out);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the MTU (maximum transmission unit) from the `z_loaned_link_t`.
+        ///
+        ///  Returns the MTU in bytes.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_mtu", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern ushort z_link_mtu(z_loaned_link_t* link);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Checks if the link is streamed.
+        ///
+        ///  Returns true if the link is streamed, false otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_is_streamed", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_link_is_streamed(z_loaned_link_t* link);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the network interfaces associated with the `z_loaned_link_t`.
+        ///
+        ///  Stores an array of interface name strings in `interfaces_out`.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_interfaces", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_interfaces(z_loaned_link_t* link, z_owned_string_array_t* interfaces_out);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the authentication identifier from the `z_loaned_link_t`.
+        ///
+        ///  Stores the authentication identifier string in `str_out` if present, or initializes a null string otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_auth_identifier", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_auth_identifier(z_loaned_link_t* link, z_owned_string_t* str_out);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the priority range from the `z_loaned_link_t` (if QoS is supported).
+        ///
+        ///  Returns true if priorities are supported and stores the min and max priorities in `min_out` and `max_out`.
+        ///  Returns false if the link does not support QoS.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_priorities", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_link_priorities(z_loaned_link_t* link, byte* min_out, byte* max_out);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the reliability from the `z_loaned_link_t` (if QoS is supported).
+        ///
+        ///  Returns true if reliability information is available and stores the reliability level in `reliability_out`.
+        ///  Returns false if the link does not support QoS.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_reliability", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_link_reliability(z_loaned_link_t* link, z_reliability_t* reliability_out);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Moves transport data from loaned pointer to owned object.
+        ///
+        ///  Moves the transport referenced by `src` into the `dst` owned object.
+        ///  The source loaned object is replaced with an empty one: valid but unspecified.
+        ///
+        ///  @param dst: The destination owned transport (must be uninitialized).
+        ///  @param src: The source loaned transport (will be replaced with empty state).
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_take_from_loaned", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_transport_take_from_loaned(z_owned_transport_t* dst, z_loaned_transport_t* src);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Moves link data from loaned pointer to owned object.
+        ///
+        ///  Moves the link referenced by `src` into the `dst` owned object.
+        ///  The source loaned object is replaced with an empty state: valid but unspecified.
+        ///
+        ///  @param dst: The destination owned link (must be uninitialized).
+        ///  @param src: The source loaned link (will be replaced with empty state).
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_take_from_loaned", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_take_from_loaned(z_owned_link_t* dst, z_loaned_link_t* src);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets event kind from the transport event.
+        ///
+        ///  Returns @ref Z_SAMPLE_KIND_PUT when a transport was added,
+        ///  @ref Z_SAMPLE_KIND_DELETE when removed.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_event_kind", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_sample_kind_t z_transport_event_kind(z_loaned_transport_event_t* @event);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the transport from the transport event.
+        ///
+        ///  Returns a loaned reference to the transport that was added or removed.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_event_transport", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_transport_t* z_transport_event_transport(z_loaned_transport_event_t* @event);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the mutable transport from the transport event.
+        ///
+        ///  Returns a mutable loaned reference to the transport that was added or removed.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_event_transport_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_transport_t* z_transport_event_transport_mut(z_loaned_transport_event_t* @event);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs null transport event.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_transport_event_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_transport_event_null(z_owned_transport_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns ``true`` if transport event is valid, ``false`` if it is in null state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_transport_event_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_transport_event_check(z_owned_transport_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Drops the owned transport event.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_event_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_transport_event_drop(z_moved_transport_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a loaned reference from an owned transport event.
+        ///
+        ///  @param this_: The owned transport event.
+        ///  @return A loaned transport event reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_event_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_transport_event_t* z_transport_event_loan(z_owned_transport_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a mutable loaned reference from an owned transport event.
+        ///
+        ///  @param this_: The owned transport event.
+        ///  @return A mutable loaned transport event reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_event_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_transport_event_t* z_transport_event_loan_mut(z_owned_transport_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Moves transport event data from loaned pointer to owned object.
+        ///
+        ///  Moves the transport event referenced by `src` into the `dst` owned object.
+        ///  The source loaned object is replaced with an empty state: valid but unspecified.
+        ///
+        ///  @param dst: The destination owned transport event (must be uninitialized).
+        ///  @param src: The source loaned transport event (will be replaced with empty state).
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_event_take_from_loaned", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_transport_event_take_from_loaned(z_owned_transport_event_t* dst, z_loaned_transport_event_t* src);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs the default value for `z_transport_events_listener_options_t`.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_events_listener_options_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_transport_events_listener_options_default(z_transport_events_listener_options_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Declares a transport events listener.
+        ///
+        ///  The listener will be called whenever a transport is added or removed from the session.
+        ///
+        ///  @param session: The session to listen on.
+        ///  @param listener: The uninitialized memory location where the listener will be constructed.
+        ///  @param callback: The closure to be called for each transport event.
+        ///  @param options: Optional configuration for the listener.
+        ///
+        ///  @return 0 on success, negative value on failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_declare_transport_events_listener", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_declare_transport_events_listener(z_loaned_session_t* session, z_owned_transport_events_listener_t* listener, z_moved_closure_transport_event_t* callback, z_transport_events_listener_options_t* options);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Declares a background transport events listener.
+        ///
+        ///  The listener runs in the background and cannot be undeclared. It will be dropped
+        ///  when the session is closed.
+        ///
+        ///  @param session: The session to listen on.
+        ///  @param callback: The closure to be called for each transport event.
+        ///  @param options: Optional configuration for the listener.
+        ///
+        ///  @return 0 on success, negative value on failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_declare_background_transport_events_listener", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_declare_background_transport_events_listener(z_loaned_session_t* session, z_moved_closure_transport_event_t* callback, z_transport_events_listener_options_t* options);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Undeclares a transport events listener.
+        ///
+        ///  @param this_: The listener to undeclare.
+        ///
+        ///  @return 0 on success, negative value on failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_undeclare_transport_events_listener", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_undeclare_transport_events_listener(z_moved_transport_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Drops the owned transport events listener.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_events_listener_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_transport_events_listener_drop(z_moved_transport_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs transport events listener in its gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_transport_events_listener_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_transport_events_listener_null(z_owned_transport_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns ``true`` if transport events listener is valid, ``false`` if it is in gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_transport_events_listener_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_transport_events_listener_check(z_owned_transport_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a loaned reference from an owned transport events listener.
+        ///
+        ///  @param this_: The owned transport events listener.
+        ///  @return A loaned transport events listener reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_transport_events_listener_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_transport_events_listener_t* z_transport_events_listener_loan(z_owned_transport_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets event kind from the link event.
+        ///
+        ///  Returns @ref Z_SAMPLE_KIND_PUT when a link was added, @ref Z_SAMPLE_KIND_DELETE when removed.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_event_kind", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_sample_kind_t z_link_event_kind(z_loaned_link_event_t* @event);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the link from the link event.
+        ///
+        ///  Returns a loaned reference to the link that was added or removed.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_event_link", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_link_t* z_link_event_link(z_loaned_link_event_t* @event);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets the mutable link from the link event.
+        ///
+        ///  Returns a mutable loaned reference to the link that was added or removed.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_event_link_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_link_t* z_link_event_link_mut(z_loaned_link_event_t* @event);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs link event in null state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_link_event_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_link_event_null(z_owned_link_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns ``true`` if link event is valid, ``false`` if it is in gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_link_event_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_link_event_check(z_owned_link_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Drops the owned link event.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_event_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_event_drop(z_moved_link_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a loaned reference from an owned link event.
+        ///
+        ///  @param this_: The owned link event.
+        ///  @return A loaned link event reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_event_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_link_event_t* z_link_event_loan(z_owned_link_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a mutable loaned reference from an owned link event.
+        ///
+        ///  @param this_: The owned link event.
+        ///  @return A mutable loaned link event reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_event_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_link_event_t* z_link_event_loan_mut(z_owned_link_event_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Moves link event data from loaned pointer to owned object.
+        ///
+        ///  Moves the link event referenced by `src` into the `dst` owned object.
+        ///  The source loaned object is replaced with an empty state: valid but unspecified.
+        ///
+        ///  @param dst: The destination owned link event (must be uninitialized).
+        ///  @param src: The source loaned link event (will be replaced with empty state).
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_event_take_from_loaned", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_event_take_from_loaned(z_owned_link_event_t* dst, z_loaned_link_event_t* src);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs the default value for `z_link_events_listener_options_t`.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_events_listener_options_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_events_listener_options_default(z_link_events_listener_options_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Declares a link events listener.
+        ///
+        ///  The listener will be called whenever a link is added or removed from the session.
+        ///
+        ///  @param session: The session to listen on.
+        ///  @param listener: The uninitialized memory location where the listener will be constructed.
+        ///  @param callback: The closure to be called for each link event.
+        ///  @param options: Optional configuration for the listener.
+        ///
+        ///  @return 0 on success, negative value on failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_declare_link_events_listener", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_declare_link_events_listener(z_loaned_session_t* session, z_owned_link_events_listener_t* listener, z_moved_closure_link_event_t* callback, z_link_events_listener_options_t* options);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Declares a background link events listener.
+        ///
+        ///  The listener runs in the background and cannot be undeclared. It will be dropped
+        ///  when the session is closed.
+        ///
+        ///  @param session: The session to listen on.
+        ///  @param callback: The closure to be called for each link event.
+        ///  @param options: Optional configuration for the listener.
+        ///
+        ///  @return 0 on success, negative value on failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_declare_background_link_events_listener", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_declare_background_link_events_listener(z_loaned_session_t* session, z_moved_closure_link_event_t* callback, z_link_events_listener_options_t* options);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Undeclares a link events listener.
+        ///
+        ///  @param this_: The listener to undeclare.
+        ///
+        ///  @return 0 on success, negative value on failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_undeclare_link_events_listener", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_undeclare_link_events_listener(z_moved_link_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Drops the owned link events listener.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_events_listener_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_link_events_listener_drop(z_moved_link_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs link events listener in its gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_link_events_listener_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_link_events_listener_null(z_owned_link_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns ``true`` if link events listener is valid, ``false`` if it is in gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_link_events_listener_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_link_events_listener_check(z_owned_link_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Gets a loaned reference from an owned link events listener.
+        ///
+        ///  @param this_: The owned link events listener.
+        ///  @return A loaned link events listener reference.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_link_events_listener_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_link_events_listener_t* z_link_events_listener_loan(z_owned_link_events_listener_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Borrows cancellation token.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_cancellation_token_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_cancellation_token_t* z_cancellation_token_loan(z_owned_cancellation_token_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Mutably borrows cancellation token.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_cancellation_token_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_cancellation_token_t* z_cancellation_token_loan_mut(z_owned_cancellation_token_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs a new cancellation token.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_cancellation_token_new", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_cancellation_token_new(z_owned_cancellation_token_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs cancellation token in its gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_cancellation_token_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_cancellation_token_null(z_owned_cancellation_token_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Clones the cancellation token into provided uninitialized memory location.
+        ///
+        ///  Cancelling token also cancels all of its clones.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_cancellation_token_clone", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_cancellation_token_clone(z_owned_cancellation_token_t* dst, z_loaned_cancellation_token_t* @this);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Frees cancellation_token, and resets it to its gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_cancellation_token_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_cancellation_token_drop(z_moved_cancellation_token_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns ``true`` if cancellation_token is valid, ``false`` if it is in a gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_cancellation_token_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_cancellation_token_check(z_owned_cancellation_token_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Interrupts all associated GET queries. If the query callback is being executed, the call blocks until execution of callback is finished.
+        ///  In case of failure, some operations might not be cancelled.
+        ///  Once cancelled, all newly added GET queries will cancel automatically.
+        ///
+        ///  @return 0 in case of success, negative error code in case of failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_cancellation_token_cancel", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_cancellation_token_cancel(z_loaned_cancellation_token_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns ``true`` if cancellation token was cancelled (i .e. if `z_cancellation_token_cancel()` was called), ``false`` otherwise.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_cancellation_token_is_cancelled", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_cancellation_token_is_cancelled(z_loaned_cancellation_token_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Constructs the default value for `ze_advanced_subscriber_history_options_t`.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "ze_advanced_subscriber_history_options_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -2474,14 +3397,14 @@ namespace Zenoh.Plugins
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Undeclares the given sample miss listener, droping and invalidating it.
+        ///  @brief Undeclares the given sample miss listener, dropping and invalidating it.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "ze_sample_miss_listener_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void ze_sample_miss_listener_drop(ze_moved_sample_miss_listener_t* @this);
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Undeclares the given sample miss listener, droping and invalidating it.
+        ///  @brief Undeclares the given sample miss listener, dropping and invalidating it.
         ///  @return 0 in case of success, negative error code otherwise.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "ze_undeclare_sample_miss_listener", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -2672,9 +3595,6 @@ namespace Zenoh.Plugins
         [DllImport(__DllName, EntryPoint = "z_bytes_copy_from_slice", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_bytes_copy_from_slice(z_owned_bytes_t* @this, z_loaned_slice_t* slice);
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_bytes_from_buf_deleter_delegate(void* data, void* context);
-
         /// <summary>
         ///  Converts buffer into `z_owned_bytes_t`.
         ///  @param this_: An uninitialized location in memory where `z_owned_bytes_t` is to be constructed.
@@ -2719,9 +3639,6 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_bytes_copy_from_string", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_bytes_copy_from_string(z_owned_bytes_t* @this, z_loaned_string_t* str);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_bytes_from_str_deleter_delegate(void* data, void* context);
 
         /// <summary>
         ///  Converts a null-terminated string into `z_owned_bytes_t`.
@@ -3170,14 +4087,12 @@ namespace Zenoh.Plugins
         internal static extern void z_keyexpr_clone(z_owned_keyexpr_t* dst, z_loaned_keyexpr_t* @this);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Constructs the default value for `z_querier_options_t`.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_querier_options_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_querier_options_default(z_querier_options_t* this_);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Constructs and declares a querier on the given key expression.
         ///
         ///  The queries can be send with the help of the `z_querier_get()` function.
@@ -3193,14 +4108,12 @@ namespace Zenoh.Plugins
         internal static extern z_result_t z_declare_querier(z_loaned_session_t* session, z_owned_querier_t* querier, z_loaned_keyexpr_t* key_expr, z_querier_options_t* options);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Constructs a querier in a gravestone state.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_internal_querier_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_internal_querier_null(z_owned_querier_t* this_);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Returns ``true`` if querier is valid, ``false`` otherwise.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_internal_querier_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -3208,33 +4121,29 @@ namespace Zenoh.Plugins
         internal static extern bool z_internal_querier_check(z_owned_querier_t* this_);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Borrows querier.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_querier_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_loaned_querier_t* z_querier_loan(z_owned_querier_t* this_);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Mutably borrows querier.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_querier_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_loaned_querier_t* z_querier_loan_mut(z_owned_querier_t* @this);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Constructs the default value for `z_querier_get_options_t`.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_querier_get_options_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_querier_get_options_default(z_querier_get_options_t* @this);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Query data from the matching queryables in the system.
         ///  Replies are provided through a callback function.
         ///
         ///  @param querier: The querier to make query from.
-        ///  @param parameters: The query's parameters, similar to a url's query segment.
+        ///  @param parameters: The query's parameters null-terminated string, similar to a url's query segment.
         ///  @param callback: The callback function that will be called on reception of replies for this query. It will be automatically dropped once all replies are processed.
         ///  @param options: Additional options for the get. All owned fields will be consumed.
         ///
@@ -3244,6 +4153,21 @@ namespace Zenoh.Plugins
         internal static extern z_result_t z_querier_get(z_loaned_querier_t* querier, byte* parameters, z_moved_closure_reply_t* callback, z_querier_get_options_t* options);
 
         /// <summary>
+        ///  @brief Query data from the matching queryables in the system.
+        ///  Replies are provided through a callback function.
+        ///
+        ///  @param querier: The querier to make query from.
+        ///  @param parameters: The query's parameters, similar to a url's query segment.
+        ///  @param parameters_len: The length of the query's parameters substring.
+        ///  @param callback: The callback function that will be called on reception of replies for this query. It will be automatically dropped once all replies are processed.
+        ///  @param options: Additional options for the get. All owned fields will be consumed.
+        ///
+        ///  @return 0 in case of success, a negative error value upon failure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_querier_get_with_parameters_substr", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_result_t z_querier_get_with_parameters_substr(z_loaned_querier_t* querier, byte* parameters, nuint parameters_len, z_moved_closure_reply_t* callback, z_querier_get_options_t* options);
+
+        /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Returns the ID of the querier.
         /// </summary>
@@ -3251,14 +4175,12 @@ namespace Zenoh.Plugins
         internal static extern z_entity_global_id_t z_querier_id(z_loaned_querier_t* querier);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Returns the key expression of the querier.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_querier_keyexpr", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_loaned_keyexpr_t* z_querier_keyexpr(z_loaned_querier_t* querier);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Constructs matching listener, registering a callback for notifying queryables matching with a given querier's key expression and target.
         ///
         ///  @param querier: A querier to associate with matching listener.
@@ -3271,7 +4193,6 @@ namespace Zenoh.Plugins
         internal static extern z_result_t z_querier_declare_matching_listener(z_loaned_querier_t* querier, z_owned_matching_listener_t* matching_listener, z_moved_closure_matching_status_t* callback);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Declares a matching listener, registering a callback for notifying queryables matching the given querier key expression and target.
         ///  The callback will be run in the background until the corresponding querier is dropped.
         ///
@@ -3284,7 +4205,6 @@ namespace Zenoh.Plugins
         internal static extern z_result_t z_querier_declare_background_matching_listener(z_loaned_querier_t* querier, z_moved_closure_matching_status_t* callback);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Gets querier matching status - i.e. if there are any queryables matching its key expression and target.
         ///
         ///  @return 0 in case of success, negative error code otherwise (in this case matching_status is not updated).
@@ -3293,7 +4213,6 @@ namespace Zenoh.Plugins
         internal static extern z_result_t z_querier_get_matching_status(z_loaned_querier_t* @this, z_matching_status_t* matching_status);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Frees memory and resets querier to its gravestone state.
         ///  This is equivalent to calling `z_undeclare_querier()` and discarding its return value.
         /// </summary>
@@ -3301,7 +4220,6 @@ namespace Zenoh.Plugins
         internal static extern void z_querier_drop(z_moved_querier_t* @this);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Undeclares the given querier.
         ///
         ///  @return 0 in case of success, negative error code otherwise.
@@ -3480,14 +4398,12 @@ namespace Zenoh.Plugins
         internal static extern z_result_t ze_undeclare_advanced_publisher(ze_moved_advanced_publisher_t* this_);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Constructs an empty matching listener.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_internal_matching_listener_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_internal_matching_listener_null(z_owned_matching_listener_t* this_);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Checks the matching listener is for the gravestone state
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_internal_matching_listener_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -3495,15 +4411,13 @@ namespace Zenoh.Plugins
         internal static extern bool z_internal_matching_listener_check(z_owned_matching_listener_t* this_);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Undeclares the given matching listener, droping and invalidating it.
+        ///  @brief Undeclares the given matching listener, dropping and invalidating it.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_matching_listener_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_matching_listener_drop(z_moved_matching_listener_t* @this);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Undeclares the given matching listener, droping and invalidating it.
+        ///  @brief Undeclares the given matching listener, dropping and invalidating it.
         ///  @return 0 in case of success, negative error code otherwise.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_undeclare_matching_listener", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -3600,9 +4514,6 @@ namespace Zenoh.Plugins
         [DllImport(__DllName, EntryPoint = "z_slice_copy_from_buf", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_result_t z_slice_copy_from_buf(z_owned_slice_t* @this, byte* start, nuint len);
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_slice_from_buf_drop_delegate(void* data, void* context);
-
         /// <summary>
         ///  Constructs a slice by transferring ownership of `data` to it.
         ///  @param this_: Pointer to an uninitialized memoery location where slice will be constructed.
@@ -3681,9 +4592,6 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_string_copy_from_substr", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_result_t z_string_copy_from_substr(z_owned_string_t* @this, byte* str, nuint len);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_string_from_str_drop_delegate(void* value, void* context);
 
         /// <summary>
         ///  Constructs an owned string by transferring ownership of a null-terminated string `str` to it.
@@ -3886,10 +4794,10 @@ namespace Zenoh.Plugins
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Returns the sample source_info.
+        ///  @brief Returns the sample source_info. Will return NULL, if source info is not set.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_sample_source_info", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern z_loaned_source_info_t* z_sample_source_info(z_loaned_sample_t* this_);
+        internal static extern z_source_info_t* z_sample_source_info(z_loaned_sample_t* this_);
 
         /// <summary>
         ///  Constructs an owned shallow copy of the sample (i.e. all modficiations applied to the copy, might be visible in the original) in provided uninitilized memory location.
@@ -3961,11 +4869,17 @@ namespace Zenoh.Plugins
         internal static extern void z_internal_sample_null(z_owned_sample_t* this_);
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Returns default value of `zc_locality_t`
+        ///  @brief Returns default value of `z_locality_t`
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_locality_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_locality_t z_locality_default();
+
+        /// <summary>
+        ///  @warning This API is deprecated. Please use `z_locality_default().
+        ///  @brief Returns default value of `z_locality_t`
         /// </summary>
         [DllImport(__DllName, EntryPoint = "zc_locality_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern zc_locality_t zc_locality_default();
+        internal static extern z_locality_t zc_locality_default();
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
@@ -3975,11 +4889,10 @@ namespace Zenoh.Plugins
         internal static extern z_reliability_t z_reliability_default();
 
         /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Returns the default value of #zc_reply_keyexpr_t.
+        ///  @brief Returns the default value of #z_reply_keyexpr_t.
         /// </summary>
-        [DllImport(__DllName, EntryPoint = "zc_reply_keyexpr_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern zc_reply_keyexpr_t zc_reply_keyexpr_default();
+        [DllImport(__DllName, EntryPoint = "z_reply_keyexpr_default", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_reply_keyexpr_t z_reply_keyexpr_default();
 
         /// <summary>
         ///  Create a default `z_query_target_t`.
@@ -4006,12 +4919,6 @@ namespace Zenoh.Plugins
         internal static extern z_congestion_control_t z_internal_congestion_control_default_request();
 
         /// <summary>
-        ///  Returns the default congestion control value of zenoh response network messages, typically used for reply operations.
-        /// </summary>
-        [DllImport(__DllName, EntryPoint = "z_internal_congestion_control_default_response", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern z_congestion_control_t z_internal_congestion_control_default_response();
-
-        /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Returns the zenoh id of entity global id.
         /// </summary>
@@ -4028,52 +4935,26 @@ namespace Zenoh.Plugins
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Creates source info.
+        ///
+        ///  @param source_id: Non-null pointer to source entity global id.
+        ///  @param source_sn: Source sequence number.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_source_info_new", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern z_result_t z_source_info_new(z_owned_source_info_t* @this, z_entity_global_id_t* source_id, uint source_sn);
+        internal static extern z_source_info_t z_source_info_new(z_entity_global_id_t* source_id, uint source_sn);
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Returns the source_id of the source info.
+        ///  @brief Returns the source id of the source info.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_source_info_id", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern z_entity_global_id_t z_source_info_id(z_loaned_source_info_t* this_);
+        internal static extern z_entity_global_id_t z_source_info_id(z_source_info_t* this_);
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Returns the source_sn of the source info.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_source_info_sn", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern uint z_source_info_sn(z_loaned_source_info_t* this_);
-
-        /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Returns ``true`` if source info is valid, ``false`` if it is in gravestone state.
-        /// </summary>
-        [DllImport(__DllName, EntryPoint = "z_internal_source_info_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool z_internal_source_info_check(z_owned_source_info_t* this_);
-
-        /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Borrows source info.
-        /// </summary>
-        [DllImport(__DllName, EntryPoint = "z_source_info_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern z_loaned_source_info_t* z_source_info_loan(z_owned_source_info_t* this_);
-
-        /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Frees the memory and invalidates the source info, resetting it to a gravestone state.
-        /// </summary>
-        [DllImport(__DllName, EntryPoint = "z_source_info_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void z_source_info_drop(z_moved_source_info_t* this_);
-
-        /// <summary>
-        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Constructs source info in its gravestone state.
-        /// </summary>
-        [DllImport(__DllName, EntryPoint = "z_internal_source_info_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void z_internal_source_info_null(z_owned_source_info_t* this_);
+        internal static extern uint z_source_info_sn(z_source_info_t* this_);
 
         /// <summary>
         ///  Drops the handler and resets it to a gravestone state.
@@ -4189,7 +5070,7 @@ namespace Zenoh.Plugins
         internal static extern void z_closure_zid_call(z_loaned_closure_zid_t* closure, z_id_t* z_id);
 
         /// <summary>
-        ///  @brief Drops the closure, resetting it to its gravestone state. Droping an uninitialized (null) closure is a no-op.
+        ///  @brief Drops the closure, resetting it to its gravestone state. Dropping an uninitialized (null) closure is a no-op.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_zid_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_closure_zid_drop(z_moved_closure_zid_t* closure_);
@@ -4205,12 +5086,6 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_zid_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_loaned_closure_zid_t* z_closure_zid_loan_mut(z_owned_closure_zid_t* closure);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_zid_call_delegate(z_id_t* z_id, void* context);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_zid_drop_delegate(void* context);
 
         /// <summary>
         ///  @brief Constructs closure.
@@ -4243,7 +5118,7 @@ namespace Zenoh.Plugins
         internal static extern void zc_closure_log_call(zc_loaned_closure_log_t* closure, zc_log_severity_t severity, z_loaned_string_t* msg);
 
         /// <summary>
-        ///  Drops the closure. Droping an uninitialized closure is a no-op.
+        ///  Drops the closure. Dropping an uninitialized closure is a no-op.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "zc_closure_log_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void zc_closure_log_drop(zc_moved_closure_log_t* closure_);
@@ -4260,12 +5135,6 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "zc_closure_log_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern zc_loaned_closure_log_t* zc_closure_log_loan(zc_owned_closure_log_t* closure);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void zc_closure_log_call_delegate(zc_log_severity_t severity, z_loaned_string_t* msg, void* context);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void zc_closure_log_drop_delegate(void* context);
 
         /// <summary>
         ///  @brief Constructs closure.
@@ -4309,7 +5178,7 @@ namespace Zenoh.Plugins
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Drops the closure, resetting it to its gravestone state. Droping an uninitialized closure is a no-op.
+        ///  @brief Drops the closure, resetting it to its gravestone state. Dropping an uninitialized closure is a no-op.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "ze_closure_miss_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void ze_closure_miss_drop(ze_moved_closure_miss_t* closure_);
@@ -4320,12 +5189,6 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "ze_closure_miss_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern ze_loaned_closure_miss_t* ze_closure_miss_loan(ze_owned_closure_miss_t* closure);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void ze_closure_miss_call_delegate(ze_miss_t* matching_status, void* context);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void ze_closure_miss_drop_delegate(void* context);
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
@@ -4383,12 +5246,6 @@ namespace Zenoh.Plugins
         [DllImport(__DllName, EntryPoint = "z_closure_query_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_loaned_closure_query_t* z_closure_query_loan_mut(z_owned_closure_query_t* closure);
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_query_call_delegate(z_loaned_query_t* query, void* context);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_query_drop_delegate(void* context);
-
         /// <summary>
         ///  @brief Constructs closure.
         ///
@@ -4427,7 +5284,7 @@ namespace Zenoh.Plugins
         internal static extern void z_closure_reply_call(z_loaned_closure_reply_t* closure, z_loaned_reply_t* reply);
 
         /// <summary>
-        ///  Drops the closure, resetting it to its gravestone state. Droping an uninitialized closure is a no-op.
+        ///  Drops the closure, resetting it to its gravestone state. Dropping an uninitialized closure is a no-op.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_reply_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_closure_reply_drop(z_moved_closure_reply_t* closure_);
@@ -4443,12 +5300,6 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_reply_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_loaned_closure_reply_t* z_closure_reply_loan_mut(z_owned_closure_reply_t* closure);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_reply_call_delegate(z_loaned_reply_t* reply, void* context);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_reply_drop_delegate(void* context);
 
         /// <summary>
         ///  @brief Constructs closure.
@@ -4488,7 +5339,7 @@ namespace Zenoh.Plugins
         internal static extern void z_closure_sample_call(z_loaned_closure_sample_t* closure, z_loaned_sample_t* sample);
 
         /// <summary>
-        ///  Drops the closure. Droping an uninitialized closure is a no-op.
+        ///  Drops the closure. Dropping an uninitialized closure is a no-op.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_sample_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_closure_sample_drop(z_moved_closure_sample_t* closure_);
@@ -4504,12 +5355,6 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_sample_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_loaned_closure_sample_t* z_closure_sample_loan_mut(z_owned_closure_sample_t* closure);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_sample_call_delegate(z_loaned_sample_t* sample, void* context);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_sample_drop_delegate(void* context);
 
         /// <summary>
         ///  @brief Constructs closure.
@@ -4530,6 +5375,116 @@ namespace Zenoh.Plugins
         internal static extern void z_closure_sample(z_owned_closure_sample_t* @this, z_closure_sample_call_delegate call, z_closure_sample_drop_delegate drop, void* context);
 
         /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs a null value of 'z_owned_closure_transport_event_t' type
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_closure_transport_event_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_closure_transport_event_null(z_owned_closure_transport_event_t* @this);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns ``true`` if closure is valid, ``false`` if it is in gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_closure_transport_event_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_closure_transport_event_check(z_owned_closure_transport_event_t* @this);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Calls the closure. Calling an uninitialized closure is a no-op.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_transport_event_call", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_transport_event_call(z_loaned_closure_transport_event_t* closure, z_loaned_transport_event_t* @event);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Drops the closure, resetting it to its gravestone state. Dropping an uninitialized closure is a no-op.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_transport_event_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_transport_event_drop(z_moved_closure_transport_event_t* closure_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Borrows closure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_transport_event_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_closure_transport_event_t* z_closure_transport_event_loan(z_owned_closure_transport_event_t* closure);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  Closures are not guaranteed not to be called concurrently.
+        ///
+        ///  It is guaranteed that:
+        ///    - `call` will never be called once `drop` has started.
+        ///    - `drop` will only be called **once**, and **after every** `call` has ended.
+        ///    - The two previous guarantees imply that `call` and `drop` are never called concurrently.
+        ///
+        ///  @brief Constructs closure.
+        ///  @param this_: uninitialized memory location where new closure will be constructed.
+        ///  @param call: a closure body.
+        ///  @param drop: an optional function to be called once on closure drop.
+        ///  @param context: closure context.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_transport_event", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_transport_event(z_owned_closure_transport_event_t* @this, z_closure_transport_event_call_delegate call, z_closure_transport_event_drop_delegate drop, void* context);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs a null value of 'z_owned_closure_link_event_t' type
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_closure_link_event_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_closure_link_event_null(z_owned_closure_link_event_t* @this);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Returns ``true`` if closure is valid, ``false`` if it is in gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_closure_link_event_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_closure_link_event_check(z_owned_closure_link_event_t* @this);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Calls the closure. Calling an uninitialized closure is a no-op.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_link_event_call", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_link_event_call(z_loaned_closure_link_event_t* closure, z_loaned_link_event_t* @event);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Drops the closure, resetting it to its gravestone state. Dropping an uninitialized closure is a no-op.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_link_event_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_link_event_drop(z_moved_closure_link_event_t* closure_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Borrows closure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_link_event_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_closure_link_event_t* z_closure_link_event_loan(z_owned_closure_link_event_t* closure);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  Closures are not guaranteed not to be called concurrently.
+        ///
+        ///  It is guaranteed that:
+        ///    - `call` will never be called once `drop` has started.
+        ///    - `drop` will only be called **once**, and **after every** `call` has ended.
+        ///    - The two previous guarantees imply that `call` and `drop` are never called concurrently.
+        ///
+        ///  @brief Constructs closure.
+        ///  @param this_: uninitialized memory location where new closure will be constructed.
+        ///  @param call: a closure body.
+        ///  @param drop: an optional function to be called once on closure drop.
+        ///  @param context: closure context.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_link_event", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_link_event(z_owned_closure_link_event_t* @this, z_closure_link_event_call_delegate call, z_closure_link_event_drop_delegate drop, void* context);
+
+        /// <summary>
         ///  Constructs a closure in a gravestone state.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_internal_closure_hello_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -4542,7 +5497,7 @@ namespace Zenoh.Plugins
         internal static extern void z_closure_hello_call(z_loaned_closure_hello_t* closure, z_loaned_hello_t* hello);
 
         /// <summary>
-        ///  Drops the closure. Droping an uninitialized closure is a no-op.
+        ///  Drops the closure. Dropping an uninitialized closure is a no-op.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_hello_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_closure_hello_drop(z_moved_closure_hello_t* this_);
@@ -4565,12 +5520,6 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_hello_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_loaned_closure_hello_t* z_closure_hello_loan_mut(z_owned_closure_hello_t* closure);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_hello_call_delegate(z_loaned_hello_t* hello, void* context);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_hello_drop_delegate(void* context);
 
         /// <summary>
         ///  @brief Constructs closure.
@@ -4784,6 +5733,68 @@ namespace Zenoh.Plugins
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Constructs a closure in its gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_closure_link_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_closure_link_null(z_owned_closure_link_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Returns ``true`` if closure is valid, ``false`` if it is in gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_closure_link_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_closure_link_check(z_owned_closure_link_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Calls the closure. Calling an uninitialized closure is a no-op.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_link_call", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_link_call(z_loaned_closure_link_t* closure, z_loaned_link_t* link);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Drops the closure. Dropping an uninitialized closure is a no-op.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_link_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_link_drop(z_moved_closure_link_t* closure_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Borrows closure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_link_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_closure_link_t* z_closure_link_loan(z_owned_closure_link_t* closure);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Mutably borrows closure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_link_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_closure_link_t* z_closure_link_loan_mut(z_owned_closure_link_t* closure);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs closure.
+        ///
+        ///  Closures are not guaranteed not to be called concurrently.
+        ///
+        ///  It is guaranteed that:
+        ///    - `call` will never be called once `drop` has started.
+        ///    - `drop` will only be called **once**, and **after every** `call` has ended.
+        ///    - The two previous guarantees imply that `call` and `drop` are never called concurrently.
+        ///
+        ///  @param this_: uninitialized memory location where new closure will be constructed.
+        ///  @param call: a closure body.
+        ///  @param drop: an optional function to be called once on closure drop.
+        ///  @param context: closure context.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_link", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_link(z_owned_closure_link_t* @this, z_closure_link_call_delegate call, z_closure_link_drop_delegate drop, void* context);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
         ///  @brief Constructs a null value of 'z_owned_closure_matching_status_t' type
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_internal_closure_matching_status_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -4806,7 +5817,7 @@ namespace Zenoh.Plugins
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
-        ///  @brief Drops the closure, resetting it to its gravestone state. Droping an uninitialized closure is a no-op.
+        ///  @brief Drops the closure, resetting it to its gravestone state. Dropping an uninitialized closure is a no-op.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_matching_status_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_closure_matching_status_drop(z_moved_closure_matching_status_t* closure_);
@@ -4817,12 +5828,6 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_matching_status_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern z_loaned_closure_matching_status_t* z_closure_matching_status_loan(z_owned_closure_matching_status_t* closure);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_matching_status_call_delegate(z_matching_status_t* matching_status, void* context);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void z_closure_matching_status_drop_delegate(void* context);
 
         /// <summary>
         ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
@@ -4842,6 +5847,68 @@ namespace Zenoh.Plugins
         /// </summary>
         [DllImport(__DllName, EntryPoint = "z_closure_matching_status", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void z_closure_matching_status(z_owned_closure_matching_status_t* @this, z_closure_matching_status_call_delegate call, z_closure_matching_status_drop_delegate drop, void* context);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Constructs a closure in its gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_closure_transport_null", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_internal_closure_transport_null(z_owned_closure_transport_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Returns ``true`` if closure is valid, ``false`` if it is in gravestone state.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_internal_closure_transport_check", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        internal static extern bool z_internal_closure_transport_check(z_owned_closure_transport_t* this_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Calls the closure. Calling an uninitialized closure is a no-op.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_transport_call", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_transport_call(z_loaned_closure_transport_t* closure, z_loaned_transport_t* transport);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Drops the closure. Dropping an uninitialized closure is a no-op.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_transport_drop", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_transport_drop(z_moved_closure_transport_t* closure_);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Borrows closure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_transport_loan", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_closure_transport_t* z_closure_transport_loan(z_owned_closure_transport_t* closure);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  Mutably borrows closure.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_transport_loan_mut", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern z_loaned_closure_transport_t* z_closure_transport_loan_mut(z_owned_closure_transport_t* closure);
+
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///  @brief Constructs closure.
+        ///
+        ///  Closures are not guaranteed not to be called concurrently.
+        ///
+        ///  It is guaranteed that:
+        ///    - `call` will never be called once `drop` has started.
+        ///    - `drop` will only be called **once**, and **after every** `call` has ended.
+        ///    - The two previous guarantees imply that `call` and `drop` are never called concurrently.
+        ///
+        ///  @param this_: uninitialized memory location where new closure will be constructed.
+        ///  @param call: a closure body.
+        ///  @param drop: an optional function to be called once on closure drop.
+        ///  @param context: closure context.
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "z_closure_transport", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void z_closure_transport(z_owned_closure_transport_t* @this, z_closure_transport_call_delegate call, z_closure_transport_drop_delegate drop, void* context);
 
         /// <summary>
         ///  Generates random `uint8_t`.
@@ -5069,9 +6136,6 @@ namespace Zenoh.Plugins
         [return: MarshalAs(UnmanagedType.U1)]
         internal static extern bool z_internal_task_check(z_owned_task_t* this_);
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void* z_task_init_fun_delegate(void* arg);
-
         /// <summary>
         ///  Constructs a new task.
         ///
@@ -5104,61 +6168,153 @@ namespace Zenoh.Plugins
 
     }
 
+    /// <summary>
+    ///  Options passed to the `z_declare_queryable()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_queryable_options_t
     {
+        /// <summary>
+        ///  The completeness of the Queryable.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool complete;
-        public zc_locality_t allowed_origin;
+        /// <summary>
+        ///  Restricts the matching requests that will be received by this Queryable to the ones
+        ///  that have the compatible allowed_destination.
+        /// </summary>
+        public z_locality_t allowed_origin;
     }
 
+    /// <summary>
+    ///  Represents the set of options that can be applied to a query reply,
+    ///  sent via `z_query_reply()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_query_reply_options_t
     {
+        /// <summary>
+        ///  The encoding of the reply payload.
+        /// </summary>
         public z_moved_encoding_t* encoding;
+        /// <summary>
+        ///  @warning This API is deprecated. Reply congestion control is not supported anymore.
+        ///  The congestion control to apply when routing the reply.
+        /// </summary>
         public z_congestion_control_t congestion_control;
+        /// <summary>
+        ///  @warning This API is deprecated. Reply priority is not supported anymore.
+        ///  The priority of the reply.
+        /// </summary>
         public z_priority_t priority;
+        /// <summary>
+        ///  If set to ``true``, this reply will not be batched. This usually has a positive impact on latency but negative impact on throughput.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_express;
+        /// <summary>
+        ///  The timestamp of the reply.
+        /// </summary>
         public z_timestamp_t* timestamp;
-        public z_moved_source_info_t* source_info;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  The source info for the reply.
+        /// </summary>
+        public z_source_info_t* source_info;
+        /// <summary>
+        ///  The attachment to this reply.
+        /// </summary>
         public z_moved_bytes_t* attachment;
     }
 
+    /// <summary>
+    ///  Represents the set of options that can be applied to a query reply error,
+    ///  sent via `z_query_reply_err()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_query_reply_err_options_t
     {
+        /// <summary>
+        ///  The encoding of the error payload.
+        /// </summary>
         public z_moved_encoding_t* encoding;
     }
 
+    /// <summary>
+    ///  Represents the set of options that can be applied to a query delete reply,
+    ///  sent via `z_query_reply_del()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_query_reply_del_options_t
     {
+        /// <summary>
+        ///  @warning This API is deprecated. Reply congestion control is not supported anymore.
+        ///  The congestion control to apply when routing the reply.
+        /// </summary>
         public z_congestion_control_t congestion_control;
+        /// <summary>
+        ///  @warning This API is deprecated. Reply priority is not supported anymore.
+        ///  The priority of the reply.
+        /// </summary>
         public z_priority_t priority;
+        /// <summary>
+        ///  If set to ``true``, this reply will not be batched. This usually has a positive impact on latency but negative impact on throughput.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_express;
+        /// <summary>
+        ///  The timestamp of the reply.
+        /// </summary>
         public z_timestamp_t* timestamp;
-        public z_moved_source_info_t* source_info;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  The source info for the reply.
+        /// </summary>
+        public z_source_info_t* source_info;
+        /// <summary>
+        ///  The attachment to this reply.
+        /// </summary>
         public z_moved_bytes_t* attachment;
     }
 
+    /// <summary>
+    ///  Options passed to the `z_open()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_open_options_t
     {
         public byte _dummy;
     }
 
+    /// <summary>
+    ///  Options passed to the `z_close()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_close_options_t
     {
+        /// <summary>
+        ///  The timeout for close operation in milliseconds. 0 means default close timeout which is 10 seconds.
+        /// </summary>
         public uint internal_timeout_ms;
+        /// <summary>
+        ///  An optional uninitialized concurrent close handle. If set, the close operation will be executed
+        ///  concurrently in separate task, and this handle will be initialized to be used for controlling
+        ///  it's execution.
+        /// </summary>
         public zc_owned_concurrent_close_handle_t* internal_out_concurrent;
         public byte _dummy;
     }
 
+    /// <summary>
+    ///  Options passed to the `z_declare_subscriber()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_subscriber_options_t
     {
-        public byte _0;
-        public zc_locality_t allowed_origin;
+        /// <summary>
+        ///  Restricts the matching publications that will be received by this Subscriber to the ones
+        ///  that have the compatible allowed_destination.
+        /// </summary>
+        public z_locality_t allowed_origin;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5169,234 +6325,1162 @@ namespace Zenoh.Plugins
         public nuint schema_len;
     }
 
+    /// <summary>
+    ///  Options passed to the `z_put()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_put_options_t
     {
+        /// <summary>
+        ///  The encoding of the message.
+        /// </summary>
         public z_moved_encoding_t* encoding;
+        /// <summary>
+        ///  The congestion control to apply when routing this message.
+        /// </summary>
         public z_congestion_control_t congestion_control;
+        /// <summary>
+        ///  The priority of this message.
+        /// </summary>
         public z_priority_t priority;
+        /// <summary>
+        ///  If set to ``true``, this message will not be batched. This usually has a positive impact on latency but negative impact on throughput.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_express;
+        /// <summary>
+        ///  The timestamp of this message.
+        /// </summary>
         public z_timestamp_t* timestamp;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  The put operation reliability.
+        /// </summary>
         public z_reliability_t reliability;
-        public zc_locality_t allowed_destination;
-        public z_moved_source_info_t* source_info;
+        /// <summary>
+        ///  The allowed destination of this message.
+        /// </summary>
+        public z_locality_t allowed_destination;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  The source info for the message.
+        /// </summary>
+        public z_source_info_t* source_info;
+        /// <summary>
+        ///  The attachment to this message.
+        /// </summary>
         public z_moved_bytes_t* attachment;
     }
 
+    /// <summary>
+    ///  Options passed to the `z_delete()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_delete_options_t
     {
+        /// <summary>
+        ///  The congestion control to apply when routing this delete message.
+        /// </summary>
         public z_congestion_control_t congestion_control;
+        /// <summary>
+        ///  The priority of the delete message.
+        /// </summary>
         public z_priority_t priority;
+        /// <summary>
+        ///  If set to ``true``, this message will not be batched. This usually has a positive impact on latency but negative impact on throughput.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_express;
+        /// <summary>
+        ///  The timestamp of this message.
+        /// </summary>
         public z_timestamp_t* timestamp;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  The delete operation reliability.
+        /// </summary>
         public z_reliability_t reliability;
-        public zc_locality_t allowed_destination;
+        /// <summary>
+        ///  The allowed destination of this message.
+        /// </summary>
+        public z_locality_t allowed_destination;
     }
 
+    /// <summary>
+    ///  @warning This API is deprecated. Please use ze_advanced_publisher.
+    ///  @brief Options passed to the `ze_declare_publication_cache()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_publication_cache_options_t
     {
+        /// <summary>
+        ///  The suffix used for queryable.
+        /// </summary>
         public z_loaned_keyexpr_t* queryable_suffix;
-        public zc_locality_t queryable_origin;
+        /// <summary>
+        ///  The restriction for the matching queries that will be receive by this publication cache.
+        /// </summary>
+        public z_locality_t queryable_origin;
+        /// <summary>
+        ///  The `complete` option for the queryable.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool queryable_complete;
+        /// <summary>
+        ///  The the history size (i.e. maximum number of messages to store).
+        /// </summary>
         public nuint history;
+        /// <summary>
+        ///  The limit number of cached resources.
+        /// </summary>
         public nuint resources_limit;
     }
 
+    /// <summary>
+    ///  Options passed to the `z_get()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_get_options_t
     {
+        /// <summary>
+        ///  The Queryables that should be target of the query.
+        /// </summary>
         public z_query_target_t target;
+        /// <summary>
+        ///  The replies consolidation strategy to apply on replies to the query.
+        /// </summary>
         public z_query_consolidation_t consolidation;
+        /// <summary>
+        ///  An optional payload to attach to the query.
+        /// </summary>
         public z_moved_bytes_t* payload;
+        /// <summary>
+        ///  An optional encoding of the query payload and or attachment.
+        /// </summary>
         public z_moved_encoding_t* encoding;
+        /// <summary>
+        ///  The congestion control to apply when routing the query.
+        /// </summary>
         public z_congestion_control_t congestion_control;
+        /// <summary>
+        ///  If set to ``true``, this message will not be batched. This usually has a positive impact on latency but negative impact on throughput.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_express;
-        public zc_locality_t allowed_destination;
-        public zc_reply_keyexpr_t accept_replies;
+        /// <summary>
+        ///  The allowed destination for the query.
+        /// </summary>
+        public z_locality_t allowed_destination;
+        /// <summary>
+        ///  The accepted replies for the query.
+        /// </summary>
+        public z_reply_keyexpr_t accept_replies;
+        /// <summary>
+        ///  The priority of the query.
+        /// </summary>
         public z_priority_t priority;
-        public z_moved_source_info_t* source_info;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  The source info for the query.
+        /// </summary>
+        public z_source_info_t* source_info;
+        /// <summary>
+        ///  An optional attachment to attach to the query.
+        /// </summary>
         public z_moved_bytes_t* attachment;
+        /// <summary>
+        ///  The timeout for the query in milliseconds. 0 means default query timeout from zenoh configuration.
+        /// </summary>
         public ulong timeout_ms;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  Cancellation token to interrupt the query.
+        /// </summary>
+        public z_moved_cancellation_token_t* cancellation_token;
     }
 
+    /// <summary>
+    ///  The replies consolidation strategy to apply on replies to a `z_get()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_query_consolidation_t
     {
         public z_consolidation_mode_t mode;
     }
 
+    /// <summary>
+    ///  @brief The options for `z_liveliness_declare_token()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_liveliness_token_options_t
     {
         public byte _dummy;
     }
 
+    /// <summary>
+    ///  @brief The options for `z_liveliness_declare_subscriber()`
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_liveliness_subscriber_options_t
     {
+        /// <summary>
+        ///  If true, subscriber will receive the state change notifications for liveliness tokens that were declared before its declaration.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool history;
     }
 
+    /// <summary>
+    ///  @brief The options for `z_liveliness_get()`
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_liveliness_get_options_t
     {
+        /// <summary>
+        ///  The timeout for the liveliness query in milliseconds. 0 means default query timeout from zenoh configuration.
+        /// </summary>
         public ulong timeout_ms;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  Cancellation token to interrupt the query.
+        /// </summary>
+        public z_moved_cancellation_token_t* cancellation_token;
     }
 
+    /// <summary>
+    ///  @warning This API is deprecated. Please use ze_advanced_subscriber.
+    ///  @brief A set of options that can be applied to a querying subscriber,
+    ///  upon its declaration via `ze_declare_querying_subscriber()`.
+    ///
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_querying_subscriber_options_t
     {
-        public zc_locality_t allowed_origin;
+        /// <summary>
+        ///  The restriction for the matching publications that will be receive by this subscriber.
+        /// </summary>
+        public z_locality_t allowed_origin;
+        /// <summary>
+        ///  The selector to be used for queries.
+        /// </summary>
         public z_loaned_keyexpr_t* query_selector;
+        /// <summary>
+        ///  The target to be used for queries.
+        /// </summary>
         public z_query_target_t query_target;
+        /// <summary>
+        ///  The consolidation mode to be used for queries.
+        /// </summary>
         public z_query_consolidation_t query_consolidation;
-        public zc_reply_keyexpr_t query_accept_replies;
+        /// <summary>
+        ///  The accepted replies for queries.
+        /// </summary>
+        public z_reply_keyexpr_t query_accept_replies;
+        /// <summary>
+        ///  The timeout to be used for queries.
+        /// </summary>
         public ulong query_timeout_ms;
     }
 
+    /// <summary>
+    ///  Options passed to the `z_declare_publisher()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_publisher_options_t
     {
+        /// <summary>
+        ///  Default encoding for messages put by this publisher.
+        /// </summary>
         public z_moved_encoding_t* encoding;
+        /// <summary>
+        ///  The congestion control to apply when routing messages from this publisher.
+        /// </summary>
         public z_congestion_control_t congestion_control;
+        /// <summary>
+        ///  The priority of messages from this publisher.
+        /// </summary>
         public z_priority_t priority;
+        /// <summary>
+        ///  If set to ``true``, this message will not be batched. This usually has a positive impact on latency but negative impact on throughput.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_express;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  The publisher reliability.
+        /// </summary>
         public z_reliability_t reliability;
-        public zc_locality_t allowed_destination;
+        /// <summary>
+        ///  The allowed destination for this publisher.
+        /// </summary>
+        public z_locality_t allowed_destination;
     }
 
+    /// <summary>
+    ///  Options passed to the `z_publisher_put()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_publisher_put_options_t
     {
+        /// <summary>
+        ///   The encoding of the data to publish.
+        /// </summary>
         public z_moved_encoding_t* encoding;
+        /// <summary>
+        ///  The timestamp of the publication.
+        /// </summary>
         public z_timestamp_t* timestamp;
-        public z_moved_source_info_t* source_info;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  The source info for the publication.
+        /// </summary>
+        public z_source_info_t* source_info;
+        /// <summary>
+        ///  The attachment to attach to the publication.
+        /// </summary>
         public z_moved_bytes_t* attachment;
     }
 
+    /// <summary>
+    ///  Represents the set of options that can be applied to the delete operation by a previously declared publisher,
+    ///  whenever issued via `z_publisher_delete()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_publisher_delete_options_t
     {
+        /// <summary>
+        ///  The timestamp of this message.
+        /// </summary>
         public z_timestamp_t* timestamp;
     }
 
+    /// <summary>
+    ///  Options to pass to `z_scout()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_scout_options_t
     {
+        /// <summary>
+        ///  The maximum duration in ms the scouting can take.
+        /// </summary>
         public ulong timeout_ms;
+        /// <summary>
+        ///  Type of entities to scout for.
+        /// </summary>
         public z_what_t what;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  Options for `z_info_links()`.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_info_links_options_t
+    {
+        /// <summary>
+        ///  Optional transport to filter links by.
+        ///  If NULL, returns all links (default behavior).
+        ///  If provided, ownership of the transport is taken and it will be dropped after filtering.
+        /// </summary>
+        public z_moved_transport_t* transport;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Options for `z_declare_transport_events_listener()`.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_transport_events_listener_options_t
+    {
+        /// <summary>
+        ///  If true, the listener will receive events for transports that were already
+        ///  connected when the listener was declared.
+        /// </summary>
+        [MarshalAs(UnmanagedType.U1)] public bool history;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Options for `z_declare_link_events_listener()`.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_link_events_listener_options_t
+    {
+        /// <summary>
+        ///  If true, the listener will receive events for links that were already
+        ///  established when the listener was declared.
+        /// </summary>
+        [MarshalAs(UnmanagedType.U1)] public bool history;
+        /// <summary>
+        ///  Optional transport to filter link events by.
+        ///  If NULL, receives events for all links (default behavior).
+        ///  If provided, only receives events for links belonging to this transport.
+        ///  Ownership of the transport is taken.
+        /// </summary>
+        public z_moved_transport_t* transport;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Settings for retrievieng historical data for Advanced Subscriber.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_advanced_subscriber_history_options_t
     {
+        /// <summary>
+        ///  Must be set to ``true``, to enable the history data recovery.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_enabled;
+        /// <summary>
+        ///  Enable detection of late joiner publishers and query for their historical data.
+        ///  Late joiner detection can only be achieved for Publishers that enable publisher_detection.
+        ///  History can only be retransmitted by Publishers that enable caching.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool detect_late_publishers;
+        /// <summary>
+        ///  Number of samples to query for each resource. ``0`` corresponds to no limit on number of samples.
+        /// </summary>
         public nuint max_samples;
+        /// <summary>
+        ///  Maximum age of samples to query. ``0`` corresponds to no limit on samples' age.
+        /// </summary>
         public ulong max_age_ms;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Settings for detection of the last sample(s) miss by Advanced Subscriber.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_advanced_subscriber_last_sample_miss_detection_options_t
     {
+        /// <summary>
+        ///  Must be set to ``true``, to enable the last sample(s) miss detection.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_enabled;
+        /// <summary>
+        ///  Period for queries for not yet received Samples.
+        ///
+        ///  These queries allow to retrieve the last Sample(s) if the last Sample(s) is/are lost.
+        ///  So it is useful for sporadic publications but useless for periodic publications
+        ///  with a period smaller or equal to this period. If set to 0, the last sample(s) miss detection will be performed
+        ///  based on publisher's heartbeat if the latter is enabled.
+        /// </summary>
         public ulong periodic_queries_period_ms;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Settings for recovering lost messages for Advanced Subscriber.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_advanced_subscriber_recovery_options_t
     {
+        /// <summary>
+        ///  Must be set to ``true``, to enable the lost sample recovery.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_enabled;
+        /// <summary>
+        ///  Setting for detecting last sample(s) miss.
+        ///  Note that it does not affect intermediate sample miss detection/retrieval (which is performed automatically as long as recovery is enabled).
+        ///  If this option is disabled, subscriber will be unable to detect/request retransmission of missed sample until it receives a more recent one from the same publisher.
+        /// </summary>
         public ze_advanced_subscriber_last_sample_miss_detection_options_t last_sample_miss_detection;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Options passed to the `ze_declare_advanced_subscriber()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_advanced_subscriber_options_t
     {
+        /// <summary>
+        ///  Base subscriber options.
+        /// </summary>
         public z_subscriber_options_t subscriber_options;
+        /// <summary>
+        ///  Settings for querying historical data. History can only be retransmitted by Publishers that enable caching.
+        /// </summary>
         public ze_advanced_subscriber_history_options_t history;
+        /// <summary>
+        ///  Settings for retransmission of detected lost Samples. Retransmission of lost samples can only be done by Publishers that enable
+        ///  caching and sample_miss_detection.
+        /// </summary>
         public ze_advanced_subscriber_recovery_options_t recovery;
+        /// <summary>
+        ///  Timeout to be used for history and recovery queries.
+        ///  Default value will be used if set to ``0``.
+        /// </summary>
         public ulong query_timeout_ms;
+        /// <summary>
+        ///  Allow this subscriber to be detected through liveliness.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool subscriber_detection;
+        /// <summary>
+        ///  An optional key expression to be added to the liveliness token key expression.
+        ///  It can be used to convey meta data.
+        /// </summary>
         public z_loaned_keyexpr_t* subscriber_detection_metadata;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A struct that represents missed samples.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_miss_t
     {
+        /// <summary>
+        ///  The source of missed samples.
+        /// </summary>
         public z_entity_global_id_t source;
+        /// <summary>
+        ///  The number of missed samples.
+        /// </summary>
         public uint nb;
     }
 
+    /// <summary>
+    ///  @brief Options passed to the `z_declare_querier()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_querier_options_t
     {
+        /// <summary>
+        ///  The Queryables that should be target of the querier queries.
+        /// </summary>
         public z_query_target_t target;
+        /// <summary>
+        ///  The replies consolidation strategy to apply on replies to the querier queries.
+        /// </summary>
         public z_query_consolidation_t consolidation;
+        /// <summary>
+        ///  The congestion control to apply when routing the querier queries.
+        /// </summary>
         public z_congestion_control_t congestion_control;
+        /// <summary>
+        ///  If set to ``true``, the querier queries will not be batched. This usually has a positive impact on latency but negative impact on throughput.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_express;
-        public zc_locality_t allowed_destination;
-        public zc_reply_keyexpr_t accept_replies;
+        /// <summary>
+        ///  The allowed destination for the querier queries.
+        /// </summary>
+        public z_locality_t allowed_destination;
+        /// <summary>
+        ///  The accepted replies for the querier queries.
+        /// </summary>
+        public z_reply_keyexpr_t accept_replies;
+        /// <summary>
+        ///  The priority of the querier queries.
+        /// </summary>
         public z_priority_t priority;
+        /// <summary>
+        ///  The timeout for the querier queries in milliseconds. 0 means default query timeout from zenoh configuration.
+        /// </summary>
         public ulong timeout_ms;
     }
 
+    /// <summary>
+    ///  @brief Options passed to the `z_querier_get()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_querier_get_options_t
     {
+        /// <summary>
+        ///  An optional payload to attach to the query.
+        /// </summary>
         public z_moved_bytes_t* payload;
+        /// <summary>
+        ///  An optional encoding of the query payload and or attachment.
+        /// </summary>
         public z_moved_encoding_t* encoding;
-        public z_moved_source_info_t* source_info;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  The source info for the query.
+        /// </summary>
+        public z_source_info_t* source_info;
+        /// <summary>
+        ///  An optional attachment to attach to the query.
+        /// </summary>
         public z_moved_bytes_t* attachment;
+        /// <summary>
+        ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+        ///
+        ///  Cancellation token to interrupt the query.
+        /// </summary>
+        public z_moved_cancellation_token_t* cancellation_token;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Setting for advanced publisher's cache. The cache allows advanced subscribers to recover history and/or lost samples.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_advanced_publisher_cache_options_t
     {
+        /// <summary>
+        ///  Must be set to ``true``, to enable the cache.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_enabled;
+        /// <summary>
+        ///  Number of samples to keep for each resource.
+        /// </summary>
         public nuint max_samples;
+        /// <summary>
+        ///  The congestion control to apply to replies.
+        /// </summary>
         public z_congestion_control_t congestion_control;
+        /// <summary>
+        ///  The priority of replies.
+        /// </summary>
         public z_priority_t priority;
+        /// <summary>
+        ///  If set to ``true``, this cache replies will not be batched. This usually has a positive impact on latency but negative impact on throughput.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_express;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Settings for sample miss detection on Advanced Publisher.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_advanced_publisher_sample_miss_detection_options_t
     {
+        /// <summary>
+        ///  Must be set to ``true``, to enable sample miss detection by adding sequence numbers.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_enabled;
+        /// <summary>
+        ///  Allow last sample miss detection through sporadic or periodic heartbeat.
+        /// </summary>
+        public ze_advanced_publisher_heartbeat_mode_t heartbeat_mode;
+        /// <summary>
+        ///  If heartbeat_mode is not NONE, the publisher will send heartbeats with the specified period, which
+        ///  can be used by Advanced Subscribers for last sample(s) miss detection (if last sample miss detection with zero query period is enabled).
+        /// </summary>
         public ulong heartbeat_period_ms;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  Options passed to the `ze_declare_advanced_publisher()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_advanced_publisher_options_t
     {
+        /// <summary>
+        ///  Base publisher options.
+        /// </summary>
         public z_publisher_options_t publisher_options;
+        /// <summary>
+        ///  Publisher cache settings.
+        /// </summary>
         public ze_advanced_publisher_cache_options_t cache;
+        /// <summary>
+        ///  Settings to allow matching Subscribers to detect lost samples and optionally ask for retransimission.
+        ///
+        ///  Retransmission can only be done if cache is enabled.
+        /// </summary>
         public ze_advanced_publisher_sample_miss_detection_options_t sample_miss_detection;
+        /// <summary>
+        ///  Allow this publisher to be detected through liveliness.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool publisher_detection;
+        /// <summary>
+        ///  An optional key expression to be added to the liveliness token key expression.
+        ///  It can be used to convey meta data.
+        /// </summary>
         public z_loaned_keyexpr_t* publisher_detection_metadata;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  Options passed to the `ze_advanced_publisher_put()` function.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_advanced_publisher_put_options_t
     {
+        /// <summary>
+        ///  Base put options.
+        /// </summary>
         public z_publisher_put_options_t put_options;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  Represents the set of options that can be applied to the delete operation by a previously declared advanced publisher,
+    ///  whenever issued via `ze_advanced_publisher_delete()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_advanced_publisher_delete_options_t
     {
+        /// <summary>
+        ///  Base delete options.
+        /// </summary>
         public z_publisher_delete_options_t delete_options;
     }
 
+    /// <summary>
+    ///  @brief A struct that indicates if there exist Subscribers matching the Publisher's key expression or Queryables matching Querier's key expression and target.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_matching_status_t
     {
+        /// <summary>
+        ///  True if there exist matching Zenoh entities, false otherwise.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool matching;
     }
 
+    /// <summary>
+    ///  @brief A zenoh id-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks:
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_zid_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  @brief Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_zid_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  @brief Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_zid_t
+    {
+        public z_owned_closure_zid_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A log-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct zc_owned_closure_log_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct zc_loaned_closure_log_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct zc_moved_closure_log_t
+    {
+        public zc_owned_closure_log_t _this;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A sample miss-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct ze_owned_closure_miss_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct ze_loaned_closure_miss_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct ze_moved_closure_miss_t
+    {
+        public ze_owned_closure_miss_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A query-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_query_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_query_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_query_t
+    {
+        public z_owned_closure_query_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A reply-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_reply_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_reply_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_reply_t
+    {
+        public z_owned_closure_reply_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A sample-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_sample_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_sample_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_sample_t
+    {
+        public z_owned_closure_sample_t _this;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A transport event-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_transport_event_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_transport_event_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_transport_event_t
+    {
+        public z_owned_closure_transport_event_t _this;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A link event-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_link_event_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_link_event_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_link_event_t
+    {
+        public z_owned_closure_link_event_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A hello message-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_hello_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_hello_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_hello_t
+    {
+        public z_owned_closure_hello_t _this;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A link-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_link_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_link_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_link_t
+    {
+        public z_owned_closure_link_t _this;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A matching status-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_matching_status_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_matching_status_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_matching_status_t
+    {
+        public z_owned_closure_matching_status_t _this;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A transport-processing closure.
+    ///
+    ///  A closure is a structure that contains all the elements for stateful, memory-leak-free callbacks.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_closure_transport_t
+    {
+        public void* _context;
+        public void* _call;
+        public void* _drop;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  Loaned closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_closure_transport_t
+    {
+        public nuint _0;
+        public nuint _1;
+        public nuint _2;
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  Moved closure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_closure_transport_t
+    {
+        public z_owned_closure_transport_t _this;
+    }
+
+    /// <summary>
+    ///  Monotonic clock
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_clock_t
+    {
+        public ulong t;
+        public void* t_base;
+    }
+
+    /// <summary>
+    ///  Returns system clock time point corresponding to the current time instant.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_time_t
+    {
+        public ulong t;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_task_attr_t
+    {
+        public nuint Item1;
+    }
+
+    /// <summary>
+    ///  A Zenoh data.
+    ///
+    ///  To minimize copies and reallocations, Zenoh may provide data in several separate buffers.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_bytes_t
     {
@@ -5409,6 +7493,9 @@ namespace Zenoh.Plugins
         public z_owned_bytes_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh data.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_bytes_t
     {
@@ -5427,18 +7514,27 @@ namespace Zenoh.Plugins
         public z_owned_slice_t _this;
     }
 
+    /// <summary>
+    ///  A contiguous sequence of bytes owned by some other entity.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_view_slice_t
     {
         public fixed byte _0[32];
     }
 
+    /// <summary>
+    ///  A loaned sequence of bytes.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_slice_t
     {
         public fixed byte _0[32];
     }
 
+    /// <summary>
+    ///  The wrapper type for strings allocated by Zenoh.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_string_t
     {
@@ -5451,18 +7547,28 @@ namespace Zenoh.Plugins
         public z_owned_string_t _this;
     }
 
+    /// <summary>
+    ///  The view over a string.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_view_string_t
     {
         public fixed byte _0[32];
     }
 
+    /// <summary>
+    ///  A loaned string.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_string_t
     {
         public fixed byte _0[32];
     }
 
+    /// <summary>
+    ///  An array of maybe-owned non-null terminated strings.
+    ///
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_string_array_t
     {
@@ -5475,16 +7581,25 @@ namespace Zenoh.Plugins
         public z_owned_string_array_t _this;
     }
 
+    /// <summary>
+    ///  A loaned string array.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_string_array_t
     {
         public fixed byte _0[24];
     }
 
+    /// <summary>
+    ///  An owned Zenoh sample.
+    ///
+    ///  This is a read only type that can only be constructed by cloning a `z_loaned_sample_t`.
+    ///  Like all owned types, it should be freed using z_drop or z_sample_drop.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_sample_t
     {
-        public fixed byte _0[232];
+        public fixed byte _0[224];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5493,18 +7608,27 @@ namespace Zenoh.Plugins
         public z_owned_sample_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh sample.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_sample_t
     {
-        public fixed byte _0[232];
+        public fixed byte _0[224];
     }
 
+    /// <summary>
+    ///  A reader for payload.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_bytes_reader_t
     {
         public fixed byte _0[24];
     }
 
+    /// <summary>
+    ///  An owned writer for payload.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_bytes_writer_t
     {
@@ -5517,18 +7641,27 @@ namespace Zenoh.Plugins
         public z_owned_bytes_writer_t _this;
     }
 
+    /// <summary>
+    ///  An loaned writer for payload.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_bytes_writer_t
     {
         public fixed byte _0[64];
     }
 
+    /// <summary>
+    ///  An iterator over slices of serialized data.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_bytes_slice_iterator_t
     {
         public fixed byte _0[24];
     }
 
+    /// <summary>
+    ///  The &lt;a href="https://zenoh.io/docs/manual/abstractions/#encoding"&gt; encoding &lt;/a&gt; of Zenoh data.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_encoding_t
     {
@@ -5541,16 +7674,22 @@ namespace Zenoh.Plugins
         public z_owned_encoding_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh encoding.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_encoding_t
     {
         public fixed byte _0[48];
     }
 
+    /// <summary>
+    ///  An owned reply from a Queryable to a `z_get()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_reply_t
     {
-        public fixed byte _0[256];
+        public fixed byte _0[248];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5559,12 +7698,18 @@ namespace Zenoh.Plugins
         public z_owned_reply_t _this;
     }
 
+    /// <summary>
+    ///  A loaned reply.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_reply_t
     {
-        public fixed byte _0[256];
+        public fixed byte _0[248];
     }
 
+    /// <summary>
+    ///  A Zenoh reply error - a combination of reply error payload and its encoding.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_reply_err_t
     {
@@ -5577,12 +7722,20 @@ namespace Zenoh.Plugins
         public z_owned_reply_err_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh reply error.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_reply_err_t
     {
         public fixed byte _0[88];
     }
 
+    /// <summary>
+    ///  An owned Zenoh query received by a queryable.
+    ///
+    ///  Queries are atomically reference-counted, letting you extract them from the callback that handed them to you by cloning.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_query_t
     {
@@ -5595,16 +7748,24 @@ namespace Zenoh.Plugins
         public z_owned_query_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh query.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_query_t
     {
         public fixed byte _0[144];
     }
 
+    /// <summary>
+    ///  An owned Zenoh &lt;a href="https://zenoh.io/docs/manual/abstractions/#queryable"&gt; queryable &lt;/a&gt;.
+    ///
+    ///  Responds to queries sent via `z_get()` with intersecting key expression.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_queryable_t
     {
-        public fixed byte _0[16];
+        public fixed byte _0[56];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5613,16 +7774,24 @@ namespace Zenoh.Plugins
         public z_owned_queryable_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh queryable.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_queryable_t
     {
-        public fixed byte _0[16];
+        public fixed byte _0[56];
     }
 
+    /// <summary>
+    ///  An owned Zenoh querier.
+    ///
+    ///  Sends queries to matching queryables.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_querier_t
     {
-        public fixed byte _0[80];
+        public fixed byte _0[88];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5631,16 +7800,26 @@ namespace Zenoh.Plugins
         public z_owned_querier_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh queryable.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_querier_t
     {
-        public fixed byte _0[80];
+        public fixed byte _0[88];
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An owned Zenoh querying subscriber.
+    ///
+    ///  In addition to receiving the data it is subscribed to,
+    ///  it also will fetch data from a Queryable at startup and peridodically (using  `ze_querying_subscriber_get()`).
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_owned_querying_subscriber_t
     {
-        public fixed byte _0[80];
+        public fixed byte _0[104];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5649,16 +7828,27 @@ namespace Zenoh.Plugins
         public ze_owned_querying_subscriber_t _this;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A loaned Zenoh querying subscriber.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_loaned_querying_subscriber_t
     {
-        public fixed byte _0[80];
+        public fixed byte _0[104];
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An owned Zenoh advanced subscriber.
+    ///
+    ///  In addition to receiving the data it is subscribed to,
+    ///  it is also able to receive notifications regarding missed samples and/or automatically recover them.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_owned_advanced_subscriber_t
     {
-        public fixed byte _0[152];
+        public fixed byte _0[176];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5667,16 +7857,27 @@ namespace Zenoh.Plugins
         public ze_owned_advanced_subscriber_t _this;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A loaned Zenoh advanced subscriber.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_loaned_advanced_subscriber_t
     {
-        public fixed byte _0[152];
+        public fixed byte _0[176];
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An owned Zenoh sample miss listener. Missed samples can only be detected from advanced publishers, enabling sample miss detection.
+    ///
+    ///  A listener that sends notification when the advanced subscriber misses a sample .
+    ///  Dropping the corresponding subscriber, also drops the listener.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_owned_sample_miss_listener_t
     {
-        public fixed byte _0[16];
+        public fixed byte _0[24];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5685,10 +7886,17 @@ namespace Zenoh.Plugins
         public ze_owned_sample_miss_listener_t _this;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An owned Zenoh advanced publisher.
+    ///
+    ///  In addition to publishing the data,
+    ///  it also maintains the storage, allowing matching subscribers to retrive missed samples.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_owned_advanced_publisher_t
     {
-        public fixed byte _0[200];
+        public fixed byte _0[248];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5697,12 +7905,33 @@ namespace Zenoh.Plugins
         public ze_owned_advanced_publisher_t _this;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A loaned Zenoh advanced publisher.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_loaned_advanced_publisher_t
     {
-        public fixed byte _0[200];
+        public fixed byte _0[248];
     }
 
+    /// <summary>
+    ///  A Zenoh-allocated &lt;a href="https://zenoh.io/docs/manual/abstractions/#key-expression"&gt; key expression &lt;/a&gt;.
+    ///
+    ///  Key expressions can identify a single key or a set of keys.
+    ///
+    ///  Examples :
+    ///     - ``"key/expression"``.
+    ///     - ``"key/ex*"``.
+    ///
+    ///  Key expressions can be mapped to numerical ids through `z_declare_keyexpr`
+    ///  for wire and computation efficiency.
+    ///
+    ///  Internally key expressiobn can be either:
+    ///    - A plain string expression.
+    ///    - A pure numerical id.
+    ///    - The combination of a numerical prefix and a string suffix.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_keyexpr_t
     {
@@ -5715,18 +7944,36 @@ namespace Zenoh.Plugins
         public z_owned_keyexpr_t _this;
     }
 
+    /// <summary>
+    ///  A user allocated string, viewed as a key expression.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_view_keyexpr_t
     {
         public fixed byte _0[32];
     }
 
+    /// <summary>
+    ///  A loaned key expression.
+    ///
+    ///  Key expressions can identify a single key or a set of keys.
+    ///
+    ///  Examples :
+    ///     - ``"key/expression"``.
+    ///     - ``"key/ex*"``.
+    ///
+    ///  Using `z_declare_keyexpr` allows Zenoh to optimize a key expression,
+    ///  both for local processing and network-wise.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_keyexpr_t
     {
         public fixed byte _0[32];
     }
 
+    /// <summary>
+    ///  An owned Zenoh session.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_session_t
     {
@@ -5739,16 +7986,22 @@ namespace Zenoh.Plugins
         public z_owned_session_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh session.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_session_t
     {
         public fixed byte _0[8];
     }
 
+    /// <summary>
+    ///  An owned Close handle
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct zc_owned_concurrent_close_handle_t
     {
-        public fixed byte _0[8];
+        public fixed byte _0[16];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5757,10 +8010,13 @@ namespace Zenoh.Plugins
         public zc_owned_concurrent_close_handle_t _this;
     }
 
+    /// <summary>
+    ///  An owned Zenoh configuration.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_config_t
     {
-        public fixed byte _0[1864];
+        public fixed byte _0[2040];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5769,28 +8025,44 @@ namespace Zenoh.Plugins
         public z_owned_config_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh configuration.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_config_t
     {
-        public fixed byte _0[1864];
+        public fixed byte _0[2040];
     }
 
+    /// <summary>
+    ///  @brief A Zenoh ID.
+    ///
+    ///  In general, valid Zenoh IDs are LSB-first 128bit unsigned and non-zero integers.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_id_t
     {
         public fixed byte id[16];
     }
 
+    /// <summary>
+    ///  A Zenoh &lt;a href="https://zenoh.io/docs/manual/abstractions/#timestamp"&gt; timestamp &lt;/a&gt;.
+    ///
+    ///  It consists of a time generated by a Hybrid Logical Clock (HLC) in NPT64 format and a unique zenoh identifier.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_timestamp_t
     {
         public fixed byte _0[24];
     }
 
+    /// <summary>
+    ///  An owned Zenoh &lt;a href="https://zenoh.io/docs/manual/abstractions/#publisher"&gt; publisher &lt;/a&gt;.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_publisher_t
     {
-        public fixed byte _0[112];
+        public fixed byte _0[120];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5799,16 +8071,25 @@ namespace Zenoh.Plugins
         public z_owned_publisher_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh publisher.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_publisher_t
     {
-        public fixed byte _0[112];
+        public fixed byte _0[120];
     }
 
+    /// <summary>
+    ///  @brief An owned Zenoh matching listener.
+    ///
+    ///  A listener that sends notifications when the [`MatchingStatus`] of a publisher or querier changes.
+    ///  Dropping the corresponding publisher, also drops matching listener.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_matching_listener_t
     {
-        public fixed byte _0[24];
+        public fixed byte _0[32];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5817,10 +8098,16 @@ namespace Zenoh.Plugins
         public z_owned_matching_listener_t _this;
     }
 
+    /// <summary>
+    ///  An owned Zenoh &lt;a href="https://zenoh.io/docs/manual/abstractions/#subscriber"&gt; subscriber &lt;/a&gt;.
+    ///
+    ///  Receives data from publication on intersecting key expressions.
+    ///  Destroying the subscriber cancels the subscription.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_subscriber_t
     {
-        public fixed byte _0[48];
+        public fixed byte _0[56];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5829,12 +8116,22 @@ namespace Zenoh.Plugins
         public z_owned_subscriber_t _this;
     }
 
+    /// <summary>
+    ///  A loaned Zenoh subscriber.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_subscriber_t
     {
-        public fixed byte _0[48];
+        public fixed byte _0[56];
     }
 
+    /// <summary>
+    ///  @brief A liveliness token that can be used to provide the network with information about connectivity to its
+    ///  declarer: when constructed, a PUT sample will be received by liveliness subscribers on intersecting key
+    ///  expressions.
+    ///
+    ///  A DELETE on the token's key expression will be received by subscribers if the token is destroyed, or if connectivity between the subscriber and the token's creator is lost.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_liveliness_token_t
     {
@@ -5847,16 +8144,184 @@ namespace Zenoh.Plugins
         public z_owned_liveliness_token_t _this;
     }
 
+    /// <summary>
+    ///  @brief A loaned liveliness token.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_liveliness_token_t
     {
         public fixed byte _0[16];
     }
 
+    /// <summary>
+    ///  @brief A Transport structure returned by Zenoh connectivity API.
+    ///
+    ///  Represents a remote zenoh node connected to this node. Only one transport per remote node exists.
+    ///  Each transport can have multiple corresponding `z_owned_link_t` which represent
+    ///  actual established data links with various protocols.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_transport_t
+    {
+        public fixed byte _0[20];
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_transport_t
+    {
+        public z_owned_transport_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A loaned Transport structure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_transport_t
+    {
+        public fixed byte _0[20];
+    }
+
+    /// <summary>
+    ///  @brief A Zenoh link structure returned by Zenoh connectivity API.
+    ///
+    ///  Represents an actual data link with a remote zenoh node over a specific protocol.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_link_t
+    {
+        public fixed byte _0[144];
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_link_t
+    {
+        public z_owned_link_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A loaned Link structure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_link_t
+    {
+        public fixed byte _0[144];
+    }
+
+    /// <summary>
+    ///  @brief The event notifyting about addition or removal of a transport `z_owned_transport_t`
+    ///
+    ///  Used in Zenoh connectivity API to notify about connecting or disconnecting to remote zenoh nodes.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_transport_event_t
+    {
+        public fixed byte _0[21];
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_transport_event_t
+    {
+        public z_owned_transport_event_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A loaned TransportEvent structure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_transport_event_t
+    {
+        public fixed byte _0[21];
+    }
+
+    /// <summary>
+    ///  @brief The event notifyting about addition or removal of a link `z_owned_link_t`
+    ///
+    ///  Used in Zenoh connectivity API to notify about establishment or break of data links with remote zenoh nodes.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_link_event_t
+    {
+        public fixed byte _0[152];
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_link_event_t
+    {
+        public z_owned_link_event_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A loaned LinkEvent structure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_link_event_t
+    {
+        public fixed byte _0[152];
+    }
+
+    /// <summary>
+    ///  @brief A listener for transport events.
+    ///
+    ///  Used in Zenoh connectivity API to get notified about connecting or disconnecting to remote zenoh nodes.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_transport_events_listener_t
+    {
+        public fixed byte _0[24];
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_transport_events_listener_t
+    {
+        public z_owned_transport_events_listener_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A loaned TransportEventsListener structure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_transport_events_listener_t
+    {
+        public fixed byte _0[24];
+    }
+
+    /// <summary>
+    ///  @brief A listener for link events.
+    ///
+    ///  Used in Zenoh connectivity API to get notified about establishment or break of data links with remote zenoh nodes.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_link_events_listener_t
+    {
+        public fixed byte _0[24];
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_moved_link_events_listener_t
+    {
+        public z_owned_link_events_listener_t _this;
+    }
+
+    /// <summary>
+    ///  @brief A loaned LinkEventsListener structure.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_loaned_link_events_listener_t
+    {
+        public fixed byte _0[24];
+    }
+
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An owned Zenoh publication cache.
+    ///
+    ///  Used to store publications on intersecting key expressions. Can be queried later via `z_get()` to retrieve this data
+    ///  (for example by `ze_owned_querying_subscriber_t`).
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_owned_publication_cache_t
     {
-        public fixed byte _0[96];
+        public fixed byte _0[144];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5865,12 +8330,19 @@ namespace Zenoh.Plugins
         public ze_owned_publication_cache_t _this;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A loaned Zenoh publication cache.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_loaned_publication_cache_t
     {
-        public fixed byte _0[96];
+        public fixed byte _0[144];
     }
 
+    /// <summary>
+    ///  An owned mutex.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_mutex_t
     {
@@ -5883,12 +8355,20 @@ namespace Zenoh.Plugins
         public z_owned_mutex_t _this;
     }
 
+    /// <summary>
+    ///  A loaned mutex.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_mutex_t
     {
         public fixed byte _0[32];
     }
 
+    /// <summary>
+    ///  An owned conditional variable.
+    ///
+    ///  Used in combination with `z_owned_mutex_t` to wake up thread when certain conditions are met.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_condvar_t
     {
@@ -5901,16 +8381,22 @@ namespace Zenoh.Plugins
         public z_owned_condvar_t _this;
     }
 
+    /// <summary>
+    ///  A loaned conditional variable.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_condvar_t
     {
         public fixed byte _0[16];
     }
 
+    /// <summary>
+    ///  An owned Zenoh task.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_task_t
     {
-        public fixed byte _0[32];
+        public fixed byte _0[24];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5919,6 +8405,9 @@ namespace Zenoh.Plugins
         public z_owned_task_t _this;
     }
 
+    /// <summary>
+    ///  An owned Zenoh-allocated hello message returned by a Zenoh entity to a scout message sent with `z_scout()`.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_hello_t
     {
@@ -5931,22 +8420,32 @@ namespace Zenoh.Plugins
         public z_owned_hello_t _this;
     }
 
+    /// <summary>
+    ///  A loaned hello message.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_hello_t
     {
         public fixed byte _0[48];
     }
 
+    /// <summary>
+    ///  A loaned SHM Client Storage.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_shm_client_storage_t
     {
         public fixed byte _0[8];
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An owned ZShm slice.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_shm_t
     {
-        public fixed byte _0[32];
+        public fixed byte _0[80];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5955,16 +8454,24 @@ namespace Zenoh.Plugins
         public z_owned_shm_t _this;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A loaned ZShm slice.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_shm_t
     {
-        public fixed byte _0[32];
+        public fixed byte _0[80];
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An owned ZShmMut slice.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_shm_mut_t
     {
-        public fixed byte _0[32];
+        public fixed byte _0[80];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -5973,6 +8480,19 @@ namespace Zenoh.Plugins
         public z_owned_shm_mut_t _this;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An owned shared ShmProvider.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct z_owned_shared_shm_provider_t
+    {
+        public fixed byte _0[112];
+    }
+
+    /// <summary>
+    ///  An owned Zenoh fifo sample handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_fifo_handler_sample_t
     {
@@ -5985,12 +8505,18 @@ namespace Zenoh.Plugins
         public z_owned_fifo_handler_sample_t _this;
     }
 
+    /// <summary>
+    ///  An loaned Zenoh fifo sample handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_fifo_handler_sample_t
     {
         public fixed byte _0[8];
     }
 
+    /// <summary>
+    ///  An owned Zenoh ring sample handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_ring_handler_sample_t
     {
@@ -6003,12 +8529,18 @@ namespace Zenoh.Plugins
         public z_owned_ring_handler_sample_t _this;
     }
 
+    /// <summary>
+    ///  An loaned Zenoh ring sample handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_ring_handler_sample_t
     {
         public fixed byte _0[8];
     }
 
+    /// <summary>
+    ///  An owned Zenoh fifo query handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_fifo_handler_query_t
     {
@@ -6021,12 +8553,18 @@ namespace Zenoh.Plugins
         public z_owned_fifo_handler_query_t _this;
     }
 
+    /// <summary>
+    ///  An loaned Zenoh fifo query handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_fifo_handler_query_t
     {
         public fixed byte _0[8];
     }
 
+    /// <summary>
+    ///  An owned Zenoh ring query handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_ring_handler_query_t
     {
@@ -6039,12 +8577,18 @@ namespace Zenoh.Plugins
         public z_owned_ring_handler_query_t _this;
     }
 
+    /// <summary>
+    ///  An loaned Zenoh ring query handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_ring_handler_query_t
     {
         public fixed byte _0[8];
     }
 
+    /// <summary>
+    ///  An owned Zenoh fifo reply handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_fifo_handler_reply_t
     {
@@ -6057,12 +8601,18 @@ namespace Zenoh.Plugins
         public z_owned_fifo_handler_reply_t _this;
     }
 
+    /// <summary>
+    ///  An loaned Zenoh fifo reply handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_fifo_handler_reply_t
     {
         public fixed byte _0[8];
     }
 
+    /// <summary>
+    ///  An owned Zenoh ring reply handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_owned_ring_handler_reply_t
     {
@@ -6075,36 +8625,38 @@ namespace Zenoh.Plugins
         public z_owned_ring_handler_reply_t _this;
     }
 
+    /// <summary>
+    ///  An loaned Zenoh ring reply handler.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_loaned_ring_handler_reply_t
     {
         public fixed byte _0[8];
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A source info.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_owned_source_info_t
+    internal unsafe partial struct z_source_info_t
     {
-        public fixed byte _0[32];
+        public fixed byte _0[24];
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_moved_source_info_t
-    {
-        public z_owned_source_info_t _this;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_loaned_source_info_t
-    {
-        public fixed byte _0[32];
-    }
-
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An entity gloabal id.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct z_entity_global_id_t
     {
         public fixed byte _0[20];
     }
 
+    /// <summary>
+    ///  @brief An owned Zenoh serializer.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_owned_serializer_t
     {
@@ -6117,197 +8669,74 @@ namespace Zenoh.Plugins
         public ze_owned_serializer_t _this;
     }
 
+    /// <summary>
+    ///  @brief A loaned Zenoh serializer.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_loaned_serializer_t
     {
         public fixed byte _0[64];
     }
 
+    /// <summary>
+    ///  @brief A Zenoh serializer.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct ze_deserializer_t
     {
         public fixed byte _0[24];
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief An owned cancellation token, which can be used to interrupt GET queries.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_owned_closure_zid_t
+    internal unsafe partial struct z_owned_cancellation_token_t
     {
-        public void* _context;
-        public void* _call;
-        public void* _drop;
+        public fixed byte _0[24];
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_loaned_closure_zid_t
+    internal unsafe partial struct z_moved_cancellation_token_t
     {
-        public fixed byte/* nuint, this length is invalid so must keep pointer and can't edit from C# */ _0[3];
+        public z_owned_cancellation_token_t _this;
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief A loaned cancellation token, which can be used to interrupt GET queries.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_moved_closure_zid_t
+    internal unsafe partial struct z_loaned_cancellation_token_t
     {
-        public z_owned_closure_zid_t _this;
+        public fixed byte _0[24];
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct zc_owned_closure_log_t
-    {
-        public void* _context;
-        public void* _call;
-        public void* _drop;
-    }
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct zc_loaned_closure_log_t
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Session's provider state.
+    /// </summary>
+    internal enum z_shm_provider_state : uint
     {
-        public fixed byte/* nuint, this length is invalid so must keep pointer and can't edit from C# */ _0[3];
+        /// <summary>
+        ///  Provider is disabled by configuration.
+        /// </summary>
+        DISABLED,
+        /// <summary>
+        ///  Provider is concurrently-initializing.
+        /// </summary>
+        INITIALIZING,
+        /// <summary>
+        ///  Provider is ready.
+        /// </summary>
+        READY,
+        /// <summary>
+        ///  Error initializing provider.
+        /// </summary>
+        ERROR,
     }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct zc_moved_closure_log_t
-    {
-        public zc_owned_closure_log_t _this;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct ze_owned_closure_miss_t
-    {
-        public void* _context;
-        public void* _call;
-        public void* _drop;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct ze_loaned_closure_miss_t
-    {
-        public fixed byte/* nuint, this length is invalid so must keep pointer and can't edit from C# */ _0[3];
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct ze_moved_closure_miss_t
-    {
-        public ze_owned_closure_miss_t _this;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_owned_closure_query_t
-    {
-        public void* _context;
-        public void* _call;
-        public void* _drop;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_loaned_closure_query_t
-    {
-        public fixed byte/* nuint, this length is invalid so must keep pointer and can't edit from C# */ _0[3];
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_moved_closure_query_t
-    {
-        public z_owned_closure_query_t _this;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_owned_closure_reply_t
-    {
-        public void* _context;
-        public void* _call;
-        public void* _drop;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_loaned_closure_reply_t
-    {
-        public fixed byte/* nuint, this length is invalid so must keep pointer and can't edit from C# */ _0[3];
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_moved_closure_reply_t
-    {
-        public z_owned_closure_reply_t _this;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_owned_closure_sample_t
-    {
-        public void* _context;
-        public void* _call;
-        public void* _drop;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_loaned_closure_sample_t
-    {
-        public fixed byte/* nuint, this length is invalid so must keep pointer and can't edit from C# */ _0[3];
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_moved_closure_sample_t
-    {
-        public z_owned_closure_sample_t _this;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_owned_closure_hello_t
-    {
-        public void* _context;
-        public void* _call;
-        public void* _drop;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_loaned_closure_hello_t
-    {
-        public fixed byte/* nuint, this length is invalid so must keep pointer and can't edit from C# */ _0[3];
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_moved_closure_hello_t
-    {
-        public z_owned_closure_hello_t _this;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_owned_closure_matching_status_t
-    {
-        public void* _context;
-        public void* _call;
-        public void* _drop;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_loaned_closure_matching_status_t
-    {
-        public fixed byte/* nuint, this length is invalid so must keep pointer and can't edit from C# */ _0[3];
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_moved_closure_matching_status_t
-    {
-        public z_owned_closure_matching_status_t _this;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_clock_t
-    {
-        public ulong t;
-        public void* t_base;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_time_t
-    {
-        public ulong t;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct z_task_attr_t
-    {
-        public nuint Item1;
-    }
-
 
     internal enum z_whatami_t : uint
     {
@@ -6321,83 +8750,252 @@ namespace Zenoh.Plugins
         ROUTER = 1,
         PEER = 2,
         CLIENT = 4,
-        ROUTER_PEER,
-        ROUTER_CLIENT,
-        PEER_CLIENT,
-        ROUTER_PEER_CLIENT,
+        ROUTER_PEER = 3,
+        ROUTER_CLIENT = 5,
+        PEER_CLIENT = 6,
+        ROUTER_PEER_CLIENT = 7,
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief Intersection level of 2 key expressions.
+    /// </summary>
     internal enum z_keyexpr_intersection_level_t : uint
     {
+        /// <summary>
+        ///  2 key expressions do not intersect.
+        /// </summary>
         DISJOINT = 0,
+        /// <summary>
+        ///  2 key expressions intersect, i.e. there exists at least one key expression that is included by both.
+        /// </summary>
         INTERSECTS = 1,
+        /// <summary>
+        ///  First key expression is the superset of second one.
+        /// </summary>
         INCLUDES = 2,
+        /// <summary>
+        ///  2 key expressions are equal.
+        /// </summary>
         EQUALS = 3,
+    }
+
+    internal enum ze_advanced_publisher_heartbeat_mode_t : uint
+    {
+        /// <summary>
+        ///  Disable heartbeat-based last sample miss detection.
+        /// </summary>
+        NONE = 0,
+        /// <summary>
+        ///  Allow last sample miss detection through periodic heartbeat.
+        ///  Periodically send the last published Sample's sequence number to allow last sample recovery.
+        /// </summary>
+        PERIODIC = 1,
+        /// <summary>
+        ///  Allow last sample miss detection through sporadic heartbeat.
+        ///  Each period, the last published Sample's sequence number is sent with `z_congestion_control_t::BLOCK`
+        ///  but only if it changed since last period.
+        /// </summary>
+        SPORADIC = 2,
     }
 
     internal enum z_sample_kind_t : uint
     {
+        /// <summary>
+        ///  The Sample was issued by a ``put`` operation. [Default]
+        /// </summary>
         PUT = 0,
+        /// <summary>
+        ///  The Sample was issued by a ``delete`` operation.
+        /// </summary>
         DELETE = 1,
     }
 
-    internal enum zc_locality_t : uint
+    /// <summary>
+    ///  The locality of samples to be received by subscribers or targeted by publishers.
+    /// </summary>
+    internal enum z_locality_t : uint
     {
+        /// <summary>
+        ///  Any.[Default]
+        /// </summary>
         ANY = 0,
+        /// <summary>
+        ///  Only from local sessions.
+        /// </summary>
         SESSION_LOCAL = 1,
+        /// <summary>
+        ///  Only from remote sessions.
+        /// </summary>
         REMOTE = 2,
     }
 
+    /// <summary>
+    ///  @warning This API has been marked as unstable: it works as advertised, but it may be changed in a future release.
+    ///  @brief The publisher reliability.
+    ///  @note Currently `reliability` does not trigger any data retransmission on the wire.
+    ///  It is rather used as a marker on the wire and it may be used to select the best link available (e.g. TCP for reliable data and UDP for best effort data).
+    /// </summary>
     internal enum z_reliability_t : uint
     {
-        BEST_EFFORT,
-        RELIABLE,
+        /// <summary>
+        ///  Defines reliability as ``BEST_EFFORT``.
+        /// </summary>
+        BEST_EFFORT = 0,
+        /// <summary>
+        ///  Defines reliability as ``RELIABLE``.[Default]
+        /// </summary>
+        RELIABLE = 1,
     }
 
-    internal enum zc_reply_keyexpr_t : uint
+    /// <summary>
+    ///  @brief Key expressions types to which Queryable should reply to.
+    /// </summary>
+    internal enum z_reply_keyexpr_t : uint
     {
+        /// <summary>
+        ///  Replies to any key expression queries.
+        /// </summary>
         ANY = 0,
+        /// <summary>
+        ///  Replies only to queries with intersecting key expressions.[Default]
+        /// </summary>
         MATCHING_QUERY = 1,
     }
 
+    /// <summary>
+    ///  The Queryables that should be target of a `z_get()`.
+    /// </summary>
     internal enum z_query_target_t : uint
     {
-        BEST_MATCHING,
-        ALL,
-        ALL_COMPLETE,
+        /// <summary>
+        ///  The nearest complete queryable if any else all matching queryables.[Default]
+        /// </summary>
+        BEST_MATCHING = 0,
+        /// <summary>
+        ///  All matching queryables.
+        /// </summary>
+        ALL = 1,
+        /// <summary>
+        ///  All complete queryables.
+        /// </summary>
+        ALL_COMPLETE = 2,
     }
 
+    /// <summary>
+    ///  Consolidation mode values.
+    /// </summary>
     internal enum z_consolidation_mode_t : int
     {
+        /// <summary>
+        ///  Let Zenoh decide the best consolidation mode depending on the query selector.
+        ///  If the selector contains time range properties, consolidation mode `NONE` is used.
+        ///  Otherwise the `LATEST` consolidation mode is used.
+        /// </summary>
         AUTO = -1,
+        /// <summary>
+        ///   No consolidation is applied. Replies may come in any order and any number.
+        /// </summary>
         NONE = 0,
+        /// <summary>
+        ///  It guarantees that any reply for a given key expression will be monotonic in time
+        ///  w.r.t. the previous received replies for the same key expression. I.e., for the same key expression multiple
+        ///  replies may be received. It is guaranteed that two replies received at t1 and t2 will have timestamp
+        ///  ts2 &gt; ts1. It optimizes latency.
+        /// </summary>
         MONOTONIC = 1,
+        /// <summary>
+        ///  It guarantees unicity of replies for the same key expression.
+        ///  It optimizes bandwidth.
+        /// </summary>
         LATEST = 2,
     }
 
+    /// <summary>
+    ///  The priority of zenoh messages.
+    /// </summary>
     internal enum z_priority_t : uint
     {
+        /// <summary>
+        ///  Priority for ``RealTime`` messages.
+        /// </summary>
         REAL_TIME = 1,
+        /// <summary>
+        ///  Highest priority for ``Interactive`` messages.
+        /// </summary>
         INTERACTIVE_HIGH = 2,
+        /// <summary>
+        ///  Lowest priority for ``Interactive`` messages.
+        /// </summary>
         INTERACTIVE_LOW = 3,
+        /// <summary>
+        ///  Highest priority for ``Data`` messages.
+        /// </summary>
         DATA_HIGH = 4,
+        /// <summary>
+        ///  Default priority for ``Data`` messages.[Default]
+        /// </summary>
         DATA = 5,
+        /// <summary>
+        ///  Lowest priority for ``Data`` messages.
+        /// </summary>
         DATA_LOW = 6,
+        /// <summary>
+        ///  Priority for ``Background traffic`` messages.
+        /// </summary>
         BACKGROUND = 7,
     }
 
     internal enum z_congestion_control_t : uint
     {
-        BLOCK,
-        DROP,
+        /// <summary>
+        ///  Messages are not dropped in case of congestion.
+        /// </summary>
+        BLOCK = 0,
+        /// <summary>
+        ///  Messages are dropped in case of congestion.[Default]
+        /// </summary>
+        DROP = 1,
+        /// <summary>
+        ///  Messages except the first one are dropped in case of congestion.
+        /// </summary>
+        BLOCK_FIRST = 2,
     }
 
+    /// <summary>
+    ///  Severity level of Zenoh log message.
+    /// </summary>
     internal enum zc_log_severity_t : uint
     {
+        /// <summary>
+        ///  The `trace` level.
+        ///
+        ///  Designates very low priority, often extremely verbose, information.
+        /// </summary>
         TRACE = 0,
+        /// <summary>
+        ///  The "debug" level.
+        ///
+        ///  Designates lower priority information.
+        /// </summary>
         DEBUG = 1,
+        /// <summary>
+        ///  The "info" level.
+        ///
+        ///  Designates useful information.
+        /// </summary>
         INFO = 2,
+        /// <summary>
+        ///  The "warn" level.
+        ///
+        ///  Designates hazardous situations.
+        /// </summary>
         WARN = 3,
+        /// <summary>
+        ///  The "error" level.
+        ///
+        ///  Designates very serious errors.
+        /// </summary>
         ERROR = 4,
     }
 
@@ -6425,4 +9023,5 @@ namespace Zenoh.Plugins
 
 
 }
-#endif
+
+#endif // UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
