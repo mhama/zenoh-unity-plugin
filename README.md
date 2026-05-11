@@ -141,3 +141,19 @@ export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$android_ndk/aarch64-linux-andr
 ```
 
 Then build again.
+
+### For iOS (cross-compiling on Mac OS) (experimental)
+
+prepare
+
+```sh
+rustup target add aarch64-apple-ios
+```
+
+build
+
+```sh
+cargo build --release --no-default-features --features=transport_tcp,transport_tls,unstable --target=aarch64-apple-ios
+```
+
+use target/aarch64-apple-ios/release/libzenohc.a, target/ZenohNative.g.cs
