@@ -1,6 +1,9 @@
 using System.Collections;
 using UnityEngine;
 using Zenoh;
+#if UNITY_ANDROID && !UNITY_EDITOR
+using UnityEngine.Android;
+#endif
 
 /// <summary>
 /// Zenoh Publisher class for publishing webcam images.
@@ -54,6 +57,27 @@ class CameraPublisherTest : MonoBehaviour
 
     private IEnumerator InitializeWebcamCoroutine()
     {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
+        {
+            // 許可されていない場合、リクエストを送信
+            Permission.RequestUserPermission(Permission.Camera);
+        }
+        if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
+        {
+            Debug.LogError("Camera is not permitted.");
+            yield break; // Coroutineなのでyield breakを使用
+        }
+#endif
+
+#if UNITY_IOS && !UNITY_EDITOR
+        yield return Application.RequestUserAuthorization(UserAuthorization.WebCam);
+        if (!Application.HasUserAuthorization(UserAuthorization.WebCam)) {
+            Debug.LogError("Webcam is not permitted.");
+            yield break; // Coroutineなのでyield breakを使用
+        }
+#endif
+
         // Get available webcam devices
         WebCamDevice[] devices = WebCamTexture.devices;
         if (devices.Length == 0)

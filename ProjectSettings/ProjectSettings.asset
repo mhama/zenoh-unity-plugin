@@ -165,6 +165,7 @@ PlayerSettings:
   applicationIdentifier:
     Android: com.mhama.ZenohPluginTry20250329
     Standalone: com.mhama.ZenohPluginTry20250329
+    iPhone: com.mhama.ZenohPluginTry20250329
   buildNumber:
     Standalone: 0
     VisionOS: 0
