@@ -3,7 +3,7 @@
 This is experimental Zenoh Plugin for Unity.
 This plugin utilizes zenoh-c with csbindgen generated binding code. So all features can be used (ideally).
 
-Currently, use of this plugin is not so easy because there's no wrapper classes. You need to fiddle with unsafe types and the ownership idea of Rust language...
+A few convenience wrapper classes are included, but they currently cover only a small subset of Zenoh's features. The native bridge functions cover more, but are harder to use directly.
 
 Zenoh version: 1.9.0
 
@@ -15,6 +15,7 @@ Build target platform:
 * windows x86-64
 * MacOS Apple Silicon
 * Android arm64
+* iOS (experimental)
 
 ## Note for Android
 
