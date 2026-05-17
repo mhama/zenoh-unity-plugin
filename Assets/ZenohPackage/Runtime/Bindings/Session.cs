@@ -52,7 +52,7 @@ namespace Zenoh.Bindings
 
         private ZOwnedSession()
         {
-            nativePtr = NativeMemory.Alloc<z_owned_session_t>();
+            nativePtr = NativeStorage.Alloc<z_owned_session_t>();
             ZenohNative.z_internal_session_null(nativePtr);
         }
 
@@ -130,7 +130,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_session_check(nativePtr))
                     ZenohNative.z_session_drop((z_moved_session_t*)nativePtr);
 
-                NativeMemory.Free(nativePtr);
+                NativeStorage.Free(nativePtr);
                 nativePtr = null;
             }
 

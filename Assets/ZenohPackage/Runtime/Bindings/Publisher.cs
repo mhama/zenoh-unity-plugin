@@ -197,7 +197,7 @@ namespace Zenoh.Bindings
 
         public ZOwnedPublisher()
         {
-            nativePtr = NativeMemory.Alloc<z_owned_publisher_t>();
+            nativePtr = NativeStorage.Alloc<z_owned_publisher_t>();
             ZenohNative.z_internal_publisher_null(nativePtr);
         }
 
@@ -262,7 +262,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_publisher_check(nativePtr))
                     ZenohNative.z_publisher_drop((z_moved_publisher_t*)nativePtr);
 
-                NativeMemory.Free(nativePtr);
+                NativeStorage.Free(nativePtr);
                 nativePtr = null;
             }
 
