@@ -69,6 +69,8 @@ shape.
    - Store the native struct in `internal z_<X>_options_t Native;`.
    - If the native options struct contains `z_moved_*` fields, expose
      `Move<FieldName>(ZOwned<FieldType> value)` methods to set them.
+   - Options classes with `z_moved_*` fields must implement `IDisposable`
+     because they adopt the moved wrappers' HGlobal storage.
    - Example:
      - `z_open_options_default(z_open_options_t*)` =>
        `ZOpenOptions.Default()`
@@ -137,6 +139,18 @@ for allocation plus `z_internal_*_null`.
     `ObjectDisposedException`.
   - For direct moved arguments, the caller must dispose the moved wrapper after
     the native call returns so the wrapper's HGlobal is released early.
+- `MoveStorageToNative()` is internal only and is used for `z_moved_*` fields
+  inside options structs.
+  - It calls `MoveToNative()`, then detaches the source wrapper from its
+    HGlobal storage.
+  - The options wrapper adopts that storage and becomes responsible for
+    `z_X_drop()` plus `FreeHGlobal()`.
+  - After adoption, calling `Dispose()` on the source wrapper is a no-op for
+    storage; it must not free memory referenced by the options native field.
+- Methods that pass options containing adopted `z_moved_*` fields to native
+  must dispose those options immediately after the native call returns.
+- Replacing an adopted options field must release the previously adopted
+  storage before storing the new one.
 - `Dispose()` must be idempotent.
 - `Dispose()` must call the native drop function only when the value is valid
   and has not been moved.
