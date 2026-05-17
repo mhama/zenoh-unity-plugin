@@ -1,0 +1,24 @@
+{
+  mode: "peer",
+
+  listen: {
+    endpoints: ["tcp/127.0.0.1:17447"]
+    // IPv6 も使うなら: ["tcp/[::1]:17447"]
+  },
+
+  connect: {
+    endpoints: []
+  },
+
+  scouting: {
+    multicast: {
+      enabled: false,
+      autoconnect: [],
+      listen: false
+    },
+    gossip: {
+      enabled: false,
+      autoconnect: []
+    }
+  }
+}

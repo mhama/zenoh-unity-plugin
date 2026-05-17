@@ -1,0 +1,21 @@
+{
+    "name": "ZenohPluginForUnity.Tests",
+    "rootNamespace": "",
+    "references": [
+        "ZenohPluginForUnity"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "noEngineReferences": false
+}

@@ -1,6 +1,6 @@
 using Zenoh.Plugins;
 
-namespace Zenoh
+namespace Zenoh.Legacy
 {
     // Wrapper for z_loaned_sample_t* native type
     public unsafe class SampleRef
