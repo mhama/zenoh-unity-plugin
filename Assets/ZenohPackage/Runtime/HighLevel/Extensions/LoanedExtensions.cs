@@ -10,6 +10,11 @@ namespace Zenoh.HighLevel
             return BindingsInterop.BytesToByteArray(bytes);
         }
 
+        public static int CopyTo(this ZLoanedBytes bytes, byte[] dst, int dstOffset = 0)
+        {
+            return BindingsInterop.BytesCopyTo(bytes, dst, dstOffset);
+        }
+
         public static string ToStringUtf8(this ZLoanedBytes bytes)
         {
             return BindingsInterop.BytesToStringUtf8(bytes);

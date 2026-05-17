@@ -170,7 +170,10 @@ class CameraPublisherHighLevelTest : MonoBehaviour
         {
             using (KeyExpr keyExpr = KeyExpr.Parse(keyExprString))
             {
-                publisher = Publisher.Declare(session, keyExpr);
+                publisher = Publisher.Declare(
+                    session,
+                    keyExpr,
+                    new PublisherDeclareOptions { DefaultEncoding = EncodingPreset.ImageJpeg });
             }
         }
         catch (ZenohException ex)
@@ -185,15 +188,19 @@ class CameraPublisherHighLevelTest : MonoBehaviour
 
     IEnumerator SendLoop()
     {
+        WaitForSeconds wait = new WaitForSeconds(1.0f / fps);
         while (enabled)
         {
+            // EncodeToJPG allocates a fresh managed byte[]. Publisher.Put pins it via
+            // GCHandle and hands ownership to Zenoh (zero-copy), so the array is released
+            // back to GC after Zenoh drops the payload.
             byte[] jpegData = CaptureJpegFromWebcam();
 
             if (jpegData != null && jpegData.Length > 0)
             {
                 try
                 {
-                    publisher.Put(jpegData, EncodingPreset.ImageJpeg);
+                    publisher.Put(jpegData);
                     Debug.Log($"Published webcam frame: {jpegData.Length} bytes");
                 }
                 catch (ZenohException ex)
@@ -202,7 +209,7 @@ class CameraPublisherHighLevelTest : MonoBehaviour
                 }
             }
 
-            yield return new WaitForSeconds(1.0f / fps);
+            yield return wait;
         }
     }
 }

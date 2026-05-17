@@ -10,8 +10,6 @@ public class CameraReceiverHighLevelTest : MonoBehaviour
     private Subscriber subscriber;
     private bool initialized;
 
-    private byte[] managedBuffer;
-    private readonly object bufferLock = new object();
     private Texture2D texture;
     private SynchronizationContext syncContext;
 
@@ -24,6 +22,7 @@ public class CameraReceiverHighLevelTest : MonoBehaviour
     [SerializeField]
     private Renderer targetRenderer;
 
+    // Holds the latest decoded frame for the renderer; written on main thread only.
     private bool textureUpdated;
 
     void Start()
@@ -76,60 +75,42 @@ public class CameraReceiverHighLevelTest : MonoBehaviour
 
     private void OnSampleReceived(SampleView sample)
     {
-        byte[] data = sample.PayloadAsBytes();
-        Debug.Log($"received: keyexpr: {sample.KeyExpr}");
-
-        if (data == null)
+        int payloadLength = sample.PayloadLength;
+        if (payloadLength == 0)
             return;
 
-        lock (bufferLock)
-        {
-            if (managedBuffer == null || managedBuffer.Length < data.Length)
-            {
-                managedBuffer = new byte[data.Length];
-            }
-            Array.Copy(data, managedBuffer, data.Length);
-        }
+        // One allocation + one native→managed copy per frame. Ownership of `frame`
+        // transfers to the main-thread closure; no shared buffer / lock needed.
+        byte[] frame = new byte[payloadLength];
+        sample.PayloadCopyTo(frame, 0);
+
+        Debug.Log($"received: keyexpr: {sample.KeyExpr} ({payloadLength} bytes)");
 
         try
         {
-            syncContext.Post(_ =>
+            syncContext.Post(state =>
             {
+                byte[] data = (byte[])state;
                 try
                 {
-                    byte[] textureCopy;
-                    lock (bufferLock)
-                    {
-                        if (managedBuffer == null)
-                            return;
-                        textureCopy = new byte[managedBuffer.Length];
-                        Array.Copy(managedBuffer, textureCopy, managedBuffer.Length);
-                    }
+                    if (texture == null || data.Length == 0)
+                        return;
 
-                    if (texture != null && textureCopy.Length > 0)
-                    {
-                        texture.LoadImage(textureCopy);
-                        textureUpdated = true;
-                        Debug.Log($"Texture updated: {texture.width}x{texture.height}");
-                    }
-                    else
-                    {
-                        Debug.LogWarning("Failed to update texture: texture or buffer is null/empty");
-                    }
+                    // LoadImage internally decodes JPEG and copies pixels into the
+                    // texture; the byte[] is eligible for GC after this call.
+                    texture.LoadImage(data);
+                    textureUpdated = true;
+                    Debug.Log($"Texture updated: {texture.width}x{texture.height}");
                 }
                 catch (Exception e)
                 {
                     Debug.LogError($"Error updating texture: {e.Message}\n{e.StackTrace}");
                 }
-            }, null);
+            }, frame);
         }
         catch (Exception ex)
         {
             Debug.LogError($"Failed to post to main thread: {ex.Message}\n{ex.StackTrace}");
-            lock (bufferLock)
-            {
-                textureUpdated = true;
-            }
         }
     }
 

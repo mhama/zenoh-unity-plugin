@@ -24,25 +24,52 @@ namespace Zenoh.HighLevel.Internal
             if (bytes == null)
                 throw new ArgumentNullException(nameof(bytes));
 
-            z_owned_slice_t slice = default;
-            ZResult result = new ZResult(ZenohNative.z_bytes_to_slice(bytes.NativePointer, &slice));
-            if (!result.IsOk)
-                throw new ZenohException(result, "Failed to convert bytes to slice");
+            int len = checked((int)ZenohNative.z_bytes_len(bytes.NativePointer));
+            byte[] managed = new byte[len];
+            if (len > 0)
+                BytesCopyToInternal(bytes, managed, 0, len);
+            return managed;
+        }
 
-            try
+        public static int BytesCopyTo(ZLoanedBytes bytes, byte[] dst, int dstOffset)
+        {
+            if (bytes == null)
+                throw new ArgumentNullException(nameof(bytes));
+            if (dst == null)
+                throw new ArgumentNullException(nameof(dst));
+
+            int len = checked((int)ZenohNative.z_bytes_len(bytes.NativePointer));
+            if (dstOffset < 0 || dstOffset > dst.Length)
+                throw new ArgumentOutOfRangeException(nameof(dstOffset));
+            if (len > dst.Length - dstOffset)
+                throw new ArgumentException("Destination buffer is too small", nameof(dst));
+
+            if (len == 0)
+                return 0;
+
+            return BytesCopyToInternal(bytes, dst, dstOffset, len);
+        }
+
+        private static int BytesCopyToInternal(ZLoanedBytes bytes, byte[] dst, int dstOffset, int len)
+        {
+            // Fast path: bytes are contiguous in native memory, copy directly without
+            // an intermediate native heap allocation.
+            z_view_slice_t view = default;
+            ZResult viewResult = new ZResult(ZenohNative.z_bytes_get_contiguous_view(bytes.NativePointer, &view));
+            if (viewResult.IsOk)
             {
-                z_loaned_slice_t* loaned = ZenohNative.z_slice_loan(&slice);
-                byte* data = ZenohNative.z_slice_data(loaned);
-                nuint len = ZenohNative.z_slice_len(loaned);
-                int length = checked((int)len);
-                byte[] managed = new byte[length];
-                if (length > 0)
-                    Marshal.Copy((IntPtr)data, managed, 0, length);
-                return managed;
+                z_loaned_slice_t* loaned = ZenohNative.z_view_slice_loan(&view);
+                byte* src = ZenohNative.z_slice_data(loaned);
+                Marshal.Copy((IntPtr)src, dst, dstOffset, len);
+                return len;
             }
-            finally
+
+            // Fallback for non-contiguous payloads: stream via reader directly into dst.
+            z_bytes_reader_t reader = ZenohNative.z_bytes_get_reader(bytes.NativePointer);
+            fixed (byte* dstPtr = dst)
             {
-                ZenohNative.z_slice_drop((z_moved_slice_t*)&slice);
+                nuint read = ZenohNative.z_bytes_reader_read(&reader, dstPtr + dstOffset, (nuint)len);
+                return checked((int)read);
             }
         }
 
