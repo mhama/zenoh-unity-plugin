@@ -18,6 +18,8 @@ shape.
   - `z_loaned_*` => `ZLoaned*`
   - options structs => `Z*Options`
   - status/value structs => `Z*`
+- Public Binding types use a `Z` prefix to avoid collisions with BCL types,
+  legacy wrappers, and future high-level wrappers.
 - `ZenohNative.*` function names may remain inside method bodies, but public
   Binding method names must not expose raw `z_*`, `zc_*`, or `ze_*` names.
 
@@ -39,11 +41,17 @@ shape.
        `ZOwnedBytes.TryCreateCopyFromBuf(..., out ZOwnedBytes value)`
      - `z_bytes_copy_from_str(z_owned_bytes_t*, ...)` =>
        `ZOwnedBytes.TryCreateCopyFromStr(..., out ZOwnedBytes value)`
+     - `z_config_default(z_owned_config_t*)` =>
+       `ZOwnedConfig.TryCreateDefault(out ZOwnedConfig value)`
 4. If the receiver is an existing owned value, expose an instance method on
    `ZOwned<Type>`.
    - `z_<type>_loan` => `Loan()`
    - `z_<type>_loan_mut` => `LoanMut()`
    - `z_internal_<type>_check` => `Check()`
+   - Do not use `Check()` as a universal managed liveness predicate. Native
+     semantics may be type-specific; for example, `z_owned_bytes_t` created by
+     `z_bytes_empty()` can be loaned and dropped even though
+     `z_internal_bytes_check()` returns false.
 5. If the receiver is a loaned value, expose an instance method on
    `ZLoaned<Type>`.
    - Remove `<type>_` and PascalCase the suffix.
@@ -56,8 +64,11 @@ shape.
      - `z_sample_payload(z_loaned_sample_t*)` => `ZLoanedSample.Payload()`
 6. If the native function initializes an options struct named `z_*_options_t`,
    expose a static `Default()` factory on the options class.
-   - Keep an internal or public `InitDefault()` only when needed by generated
-     implementation code.
+   - Keep `InitDefault()` private unless generated implementation code needs
+     broader access.
+   - Store the native struct in `internal z_<X>_options_t Native;`.
+   - If the native options struct contains `z_moved_*` fields, expose
+     `Move<FieldName>(ZOwned<FieldType> value)` methods to set them.
    - Example:
      - `z_open_options_default(z_open_options_t*)` =>
        `ZOpenOptions.Default()`
@@ -72,8 +83,23 @@ shape.
    - They are used by `Dispose()`.
 9. Native `z_internal_*_null` functions are not public Binding APIs.
    - They are used only to initialize wrapper storage to the gravestone state.
+10. Receiver-less native functions should be grouped by concept in static
+    classes.
+    - Constant loan getters go in `Z<Concept>Constants`.
+    - Utility functions go in `Z<Concept>Utils`.
+11. Native enums are internal in `Zenoh.Plugins`. If a public Binding method
+    returns a native enum concept, redeclare it as a public Binding enum.
+12. Output structs are returned with `Try*` methods using `out`.
+    - Example:
+      - `z_publisher_get_matching_status(...)` =>
+        `ZLoanedPublisher.TryGetMatchingStatus(out ZMatchingStatus status)`
+13. If a native equality function is exposed, implement `IEquatable<T>`,
+    `Equals(object)`, and `GetHashCode()`.
 
 ## Factory and failure handling
+
+`ZResult` exposes `IsOk`, `IsError`, and `IsChannelStatus`. Positive channel
+statuses such as `Z_CHANNEL_NODATA` are not errors.
 
 For `TryCreate*` methods:
 
@@ -87,6 +113,8 @@ For `TryCreate*` methods:
   - dispose the allocated wrapper
   - set `out value = null`
   - return the native `ZResult`
+- Do not add throwing convenience factories such as `Default()` for owned
+  values when the native constructor returns `z_result_t`.
 
 For `Create*` methods wrapping native `void` constructors:
 
@@ -107,7 +135,15 @@ for allocation plus `z_internal_*_null`.
   - It marks the owned wrapper as moved.
   - After moving, public operations on the wrapper must throw
     `ObjectDisposedException`.
+  - For direct moved arguments, the caller must dispose the moved wrapper after
+    the native call returns so the wrapper's HGlobal is released early.
 - `Dispose()` must be idempotent.
 - `Dispose()` must call the native drop function only when the value is valid
   and has not been moved.
 - Loaned values must not expose native pointers publicly.
+- Loaned wrappers store a typed owner reference when there is only one possible
+  owner type, and `object owner` when the loan may originate from either owned
+  or loaned wrappers.
+- Manually disposing an owned wrapper invalidates outstanding loans. The owner
+  reference only prevents managed GC collection; it cannot prevent native
+  use-after-free after explicit `Dispose()`.
