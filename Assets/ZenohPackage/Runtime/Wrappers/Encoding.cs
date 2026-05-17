@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using Zenoh.Plugins;
 
-namespace Zenoh
+namespace Zenoh.Legacy
 {
     // Wrapper for z_owned_encoding_t native type
 

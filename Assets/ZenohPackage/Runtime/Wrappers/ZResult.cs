@@ -1,6 +1,6 @@
 using Zenoh.Plugins;
 
-namespace Zenoh
+namespace Zenoh.Legacy
 {
     public enum ZResultCode
     {

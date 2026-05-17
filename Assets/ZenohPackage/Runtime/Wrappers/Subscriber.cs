@@ -4,7 +4,7 @@ using AOT;
 using UnityEngine;
 using Zenoh.Plugins;
 
-namespace Zenoh
+namespace Zenoh.Legacy
 {
     // Delegate for C# callback
     public delegate void SampleReceivedCallback(SampleRef sample);

@@ -1,6 +1,6 @@
 using System.Collections;
 using UnityEngine;
-using Zenoh;
+using Zenoh.Legacy;
 #if UNITY_ANDROID && !UNITY_EDITOR
 using UnityEngine.Android;
 #endif
