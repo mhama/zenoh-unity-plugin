@@ -72,8 +72,8 @@ namespace Zenoh.Bindings
 
         public bool Check()
         {
-            ThrowIfDisposed();
-            return !moved && ZenohNative.z_internal_closure_sample_check(nativePtr);
+            ThrowIfDisposedOrMoved();
+            return ZenohNative.z_internal_closure_sample_check(nativePtr);
         }
 
         internal z_owned_closure_sample_t* MoveToNative()

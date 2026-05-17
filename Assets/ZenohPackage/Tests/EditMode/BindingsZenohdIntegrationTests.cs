@@ -89,6 +89,15 @@ namespace Zenoh.Tests
                     Assert.That(message, Is.Not.Null);
 
                     ZPublisherPutOptions putOptions = ZPublisherPutOptions.Default();
+                    byte[] encodingBytes = System.Text.Encoding.UTF8.GetBytes("text/plain");
+                    ZResult encodingResult = ZOwnedEncoding.TryCreateFromSubstr(
+                        encodingBytes,
+                        (nuint)encodingBytes.Length,
+                        out ZOwnedEncoding putEncoding);
+                    Assert.That(encodingResult.IsOk, Is.True, encodingResult.ToString());
+
+                    putOptions.MoveEncoding(putEncoding);
+                    Assert.DoesNotThrow(() => putEncoding.Dispose());
 
                     ZResult putResult = loanedPublisher.Put(message, putOptions);
                     Assert.That(putResult.IsOk, Is.True, putResult.ToString());

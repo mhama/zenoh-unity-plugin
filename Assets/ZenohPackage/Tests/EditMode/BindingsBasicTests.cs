@@ -95,20 +95,48 @@ namespace Zenoh.Tests
         [Test]
         public void ZPublisherPutOptions_MoveEncodingPreventsFurtherEncodingUse()
         {
-            ZPublisherPutOptions options = ZPublisherPutOptions.Default();
-
             ZResult result = ZOwnedEncoding.TryCreateFromSubstr(
                 System.Text.Encoding.UTF8.GetBytes("text/plain"),
                 (nuint)"text/plain".Length,
                 out ZOwnedEncoding encoding);
+            using (ZPublisherPutOptions options = ZPublisherPutOptions.Default())
             using (encoding)
             {
                 Assert.That(result.IsOk, Is.True, result.ToString());
 
                 options.MoveEncoding(encoding);
 
-                Assert.That(encoding.Check(), Is.False);
+                Assert.Throws<ObjectDisposedException>(() => encoding.Check());
                 Assert.Throws<ObjectDisposedException>(() => encoding.Loan());
+                Assert.DoesNotThrow(() => encoding.Dispose());
+            }
+        }
+
+        [Test]
+        public void ZPublisherPutOptions_AdoptsMovedFieldsUntilDisposed()
+        {
+            byte[] payload = { 1, 2, 3 };
+            ZResult attachmentResult = ZOwnedBytes.TryCreateCopyFromBuf(payload, (nuint)payload.Length, out ZOwnedBytes attachment);
+            Assert.That(attachmentResult.IsOk, Is.True, attachmentResult.ToString());
+
+            ZResult encodingResult = ZOwnedEncoding.TryCreateFromSubstr(
+                System.Text.Encoding.UTF8.GetBytes("text/plain"),
+                (nuint)"text/plain".Length,
+                out ZOwnedEncoding encoding);
+            Assert.That(encodingResult.IsOk, Is.True, encodingResult.ToString());
+
+            using (ZPublisherPutOptions options = ZPublisherPutOptions.Default())
+            {
+                options.MoveAttachment(attachment);
+                options.MoveEncoding(encoding);
+
+                Assert.Throws<ObjectDisposedException>(() => attachment.Check());
+                Assert.Throws<ObjectDisposedException>(() => encoding.Check());
+                Assert.Throws<ObjectDisposedException>(() => attachment.Loan());
+                Assert.Throws<ObjectDisposedException>(() => encoding.Loan());
+
+                Assert.DoesNotThrow(() => attachment.Dispose());
+                Assert.DoesNotThrow(() => encoding.Dispose());
             }
         }
 

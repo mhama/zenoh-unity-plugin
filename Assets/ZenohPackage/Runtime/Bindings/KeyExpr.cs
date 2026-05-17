@@ -62,8 +62,8 @@ namespace Zenoh.Bindings
 
         public bool Check()
         {
-            ThrowIfDisposed();
-            return !moved && ZenohNative.z_internal_keyexpr_check(nativePtr);
+            ThrowIfDisposedOrMoved();
+            return ZenohNative.z_internal_keyexpr_check(nativePtr);
         }
 
         internal z_owned_keyexpr_t* MoveToNative()

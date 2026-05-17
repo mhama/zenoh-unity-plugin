@@ -90,8 +90,8 @@ namespace Zenoh.Bindings
 
         public bool Check()
         {
-            ThrowIfDisposed();
-            return !moved && ZenohNative.z_internal_config_check(nativePtr);
+            ThrowIfDisposedOrMoved();
+            return ZenohNative.z_internal_config_check(nativePtr);
         }
 
         internal z_owned_config_t* MoveToNative()

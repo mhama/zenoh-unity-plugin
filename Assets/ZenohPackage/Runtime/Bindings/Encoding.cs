@@ -68,8 +68,8 @@ namespace Zenoh.Bindings
 
         public bool Check()
         {
-            ThrowIfDisposed();
-            return !moved && ZenohNative.z_internal_encoding_check(nativePtr);
+            ThrowIfDisposedOrMoved();
+            return ZenohNative.z_internal_encoding_check(nativePtr);
         }
 
         internal z_owned_encoding_t* MoveToNative()
@@ -77,6 +77,13 @@ namespace Zenoh.Bindings
             ThrowIfDisposedOrMoved();
             moved = true;
             return nativePtr;
+        }
+
+        internal z_owned_encoding_t* MoveStorageToNative()
+        {
+            z_owned_encoding_t* ptr = MoveToNative();
+            nativePtr = null;
+            return ptr;
         }
 
         private void ThrowIfDisposed()
