@@ -11,29 +11,29 @@
 | FFI バインディング | `Assets/ZenohPackage/Runtime/Plugins/` (`ZenohNative.g.cs` 他) | `Zenoh.Plugins` | csbindgen が生成する生の P/Invoke。手で触らない |
 | **低レベルラッパー**（本計画） | `Assets/ZenohPackage/Runtime/Bindings/` （新規） | `Zenoh.Bindings` | C API を 1:1 に近い粒度で C# から呼ぶ層。最優先課題は **Rust 由来のメモリ問題をほぼ起こさないこと**（use-after-free / double-free / dangling loan / コールバック中の GC / 二重 Drop）。戻り値は `ZResult`、例外は引数バリデーション以外では投げない。エルゴノミクスは追わない |
 | 高レベルラッパー | `Assets/ZenohPackage/Runtime/HighLevel/` （将来） | `Zenoh.HighLevel` | API ごとに使いやすさを最適化する層。例外、async/UniTask、Try 系、ストリーミング、Unity 統合（NativeArray 等）はここで扱う。低レベルラッパーの上に薄く乗せる。**本計画では設計しない** |
-| （既存）`Wrappers/` | `Assets/ZenohPackage/Runtime/Wrappers/` | `Zenoh` | 低レベル/高レベルの責務が混在している。**今回は触らずそのまま残す**（既存サンプル・アプリ互換性のため）。新ディレクトリと型名が衝突しないよう namespace で隔離する |
+| （既存）`Wrappers/` | `Assets/ZenohPackage/Runtime/Wrappers/` | `Zenoh.Legacy` | 低レベル/高レベルの責務が混在している。既存サンプル・アプリ互換性のため Legacy namespace に隔離して残す |
 
 呼称ルール: 本ドキュメント内で「ラッパー」と単独で書かない。常に「低レベルラッパー」「高レベルラッパー」と区別する。
 
 namespace ルール:
-- 既存 `Wrappers/` の `namespace Zenoh` は維持
-- 新 `Bindings/` は `namespace Zenoh.Bindings` で隔離。型名は既存と同名（`Session`, `Publisher`, ...）でも namespace で区別されるので衝突しない
-- `using Zenoh;` と `using Zenoh.Bindings;` を同時に書くと曖昧になるため、利用側はどちらかに揃える
+- 既存 `Wrappers/` は `namespace Zenoh.Legacy` に隔離済み
+- 新 `Bindings/` は `namespace Zenoh.Bindings` で隔離。型名は `ZOwnedSession` / `ZLoanedPublisher` のように `Z` prefix + ownership prefix を付ける
+- `using Zenoh.Legacy;` と `using Zenoh.Bindings;` は同時利用できるが、利用側はできるだけどちらかに揃える
 - 将来 `Wrappers/` を廃止する判断が下りた段階で `Zenoh` 直下を低レベル層に再割り当てするかは別議論
 
 ---
 
 ## 1. 現状サマリ
 
-### 既存 `Wrappers/`（`namespace Zenoh`、低レベル/高レベル責務が混在）
+### 既存 `Wrappers/`（`namespace Zenoh.Legacy`、低レベル/高レベル責務が混在）
 
-本計画では **触らずそのまま残す**。良い参考にはなる（特に GCHandle まわりの `Subscriber`、Encoding プリセット）。低レベルラッパーで作り直すときに引き継ぐ/見直すポイントを併記する。
+既存 `Wrappers/` は `Zenoh.Legacy` に隔離した状態で残す。良い参考にはなる（特に GCHandle まわりの `Subscriber`、Encoding プリセット）。低レベルラッパーで作り直すときに引き継ぐ/見直すポイントを併記する。
 
 | 既存ファイル | カバー範囲 | 低レベル層で作り直す際の差分 |
 |---|---|---|
 | `Session` / `SessionRef` | `z_open`, `z_close`, `z_session_loan`, `zc_config_from_str` の最小経路 | `Open` 内の `Debug.Log` / `try-catch` を撤去。config 構築は別クラス（`Config`）に切り出して呼び出し側に寄せる |
 | `KeyExpr` / `KeyExprRef` | `z_keyexpr_from_str`, `_loan`, `_drop`, view 文字列化 | ctor の `throw new Exception` をやめ static factory + `ZResult` に |
-| `Publisher` + `PublisherOptions` + `PublisherPutOptions` | `z_declare_publisher`, `z_publisher_put` の bytes/string バリアント | `Put(string)` の暗黙 `Bytes` 生成・暗黙 `throw` を排除。低レベル層は `Put(BytesRef, options) -> ZResult` のみ提供 |
+| `Publisher` + `PublisherOptions` + `PublisherPutOptions` | `z_declare_publisher`, `z_publisher_put` の bytes/string バリアント | `Put(string)` の暗黙 `Bytes` 生成・暗黙 `throw` を排除。低レベル層は `Put(ZOwnedBytes, options) -> ZResult` のみ提供 |
 | `Subscriber` + `ClosureSample` | `z_declare_subscriber` の push 型コールバック経路のみ | GCHandle + `MonoPInvokeCallback` パターンは流用。`Dispose` 二重呼び出し安全性を強化、コールバック内 throw を握りつぶす規約を文書化 |
 | `Bytes` / `BytesRef` | `z_bytes_copy_from_str/buf`, `z_bytes_to_slice` 経由のバイト取得 | ctor からの `throw` を排除、factory + `ZResult`。`NativeArray`/`Span` 連携は高レベル層へ |
 | `Encoding` | 全 MIME プリセット getter + clone/drop。`encoding.With(schema)` 系は未対応 | ほぼそのまま移植。schema バリアント（`with_schema_*`）を追加 |
@@ -67,25 +67,28 @@ namespace ルール:
 ### 2-A. 機械的に変換できる（=規則化してテンプレートに落とせる）
 
 すべての Zenoh 「Owned 型」は同じ寿命パターンに従う:
-- `z_owned_X_t` を `AllocHGlobal` で確保
+- `z_owned_X_t` の格納域を `Zenoh.Bindings.Internal.NativeMemory.Alloc<T>()` で確保
 - `z_X_loan(owned_ptr) -> z_loaned_X_t*`
-- `z_X_drop((z_moved_X_t*)owned_ptr)`
-- `(z_moved_X_t*)` への cast で move semantics を表現
+- `z_X_drop((z_moved_X_t*)owned_ptr)` で値を drop
+- `Take()` で値と格納域を `OwnedStorage<T>` にまとめて移譲し、以後 source wrapper を inert 化
 
 → 以下は **テンプレ展開可能**:
 
 1. **Owned ラッパークラスの骨格**
-   - private `z_owned_X_t* nativePtr`, `bool disposed`
-   - ctor で `AllocHGlobal`
-   - `XRef Loan()` で `z_X_loan` を呼び `XRef` を返す
-   - `Dispose(true/false)` で `z_X_drop` → `FreeHGlobal`
-   - `internal NativePointer` 公開
-   - `Move()`（オーナーシップ移譲、`Encoding` と同パターン）
-2. **Ref（loaned）クラスの骨格**
+   - private `z_owned_X_t* nativePtr`, `bool disposed`, `bool moved`
+   - ctor で `NativeMemory.Alloc<T>()` し、`z_internal_X_null` で gravestone 初期化
+   - `ZLoanedX Loan()` で `z_X_loan` を呼び `ZLoanedX` を返す
+   - `Dispose()` で値が valid かつ未 move のときだけ `z_X_drop` し、格納域は `NativeMemory.Free(ptr)` で解放
+   - `Take()` で `OwnedStorage<z_owned_X_t>` を返し、`nativePtr = null`, `moved = true` にする
+   - 必要な範囲で `internal NativePointer` 公開
+2. **Loaned クラスの骨格**
    - `private readonly z_loaned_X_t* nativePtr`
    - `internal NativePointer` 公開
 3. **Options クラスの骨格**
-   - 対応する `z_X_options_t` 構造体 + `z_X_options_default(out)` を呼ぶ `ApplyTo(z_X_options_t*)`
+   - 対応する `z_X_options_t Native` フィールド + `z_X_options_default` を呼ぶ `Default()`
+   - `z_moved_*` フィールドは `Set<FieldName>(ZOwned<FieldType> moving<FieldName>)` で設定する
+   - `z_moved_*` フィールドを持つ options は `IDisposable` にし、source wrapper から `OwnedStorage<T>` を adopt して、Dispose 時に `z_X_drop` + `OwnedStorage<T>.Dispose()` する
+   - `OwnedStorage<T>` 自体に finalizer があるため、options 側には finalizer を置かない
 4. **Encoding の MIME プリセット**（53 個）
    - すでに 1-to-1 ラップ済み、追加分も機械変換
 5. **Bytes の数値型 from/to**（`u8/u16/.../bool/f32/f64/slice/string/pair/iter`）
@@ -102,8 +105,8 @@ namespace ルール:
 | 項目 | 判断ポイント |
 |---|---|
 | **コールバック→C#デリゲート橋渡し** | `GCHandle`, `MonoPInvokeCallback`, `static` ディスパッチ。型ごとに微妙に違うため手書き。`Subscriber` 既存実装をベースに `Queryable`, `Get(reply)`, `LivelinessSubscriber`, `MatchingListener`, `LinkEventsListener`, `TransportEventsListener`, `Scout(hello)`, `Log` で同パターンを展開 |
-| **チャンネルハンドラ (`fifo`/`ring`)** | push クロージャと相互排他。`Subscriber.WithFifo(capacity)` 的なファクトリで、ハンドラを保持しつつ `try_recv`/`recv` を Ref クラスに生やす |
-| **`Session.Open`** | config の構築フロー（文字列／ファイル／ビルダ）と `z_open` のオプション組み合わせ、エラー処理 |
+| **チャンネルハンドラ (`fifo`/`ring`)** | push クロージャと相互排他。`Subscriber.WithFifo(capacity)` 的なファクトリで、ハンドラを保持しつつ `try_recv`/`recv` を loaned クラスに生やす |
+| **`ZOwnedSession.TryCreateOpen`** | config の構築フロー（文字列／ファイル／ビルダ）と `z_open` のオプション組み合わせ、エラー処理 |
 | **`Get` API** | reply クロージャ または ring/fifo ハンドラのどちらでも受け取れるよう 2 経路。Payload / Attachment / Encoding / Target / Consolidation 等オプションが多い |
 | **Queryable** | `z_query_reply / reply_err / reply_del` の 3 経路 + selector パース + parameters |
 | **Advanced pub/sub** | cache 設定、history、recovery 戦略、miss listener が交錯。プリセット風 API（`AdvancedPublisher.WithCache(...).WithSampleMiss(...)`）を検討 |
@@ -116,23 +119,24 @@ namespace ルール:
 ## 3. クラス設計の指針（既存パターンの整理）
 
 既存実装で **採用** されているパターン:
-- `Owned`（`IDisposable`） / `Ref`（borrow） の 2 クラスペア
-- `Marshal.AllocHGlobal(sizeof(z_owned_X_t))` でハンドル領域を確保 → `z_X_drop` → `FreeHGlobal`
-- finalizer は `Dispose(false)` 経由
+- `ZOwned*`（`IDisposable`） / `ZLoaned*`（borrow） の 2 クラスペア
+- `NativeMemory.Alloc<T>()` / `NativeMemory.Free(ptr)` でハンドル領域を一元管理
+- `Take()` が唯一の消費プリミティブで、`OwnedStorage<T>` に格納域所有権を移す
+- finalizer は owned wrapper と `OwnedStorage<T>` の安全網に限定し、options wrapper には置かない
 - `internal NativePointer` で同一 namespace から低レベルアクセス可
-- Options クラスは `ApplyTo(z_X_options_t*)` を持つ
+- Options クラスは `internal z_X_options_t Native` を持つ
 
 **ルールとして固定したい点** (バージョン上げの差分が読みやすくなる):
 
-1. 1 ファイル 1 主要型。`Publisher.cs` の中に `PublisherOptions`, `PublisherPutOptions` を入れる現状方針を踏襲。
-2. クラス名は C 側型名の prefix を落として PascalCase: `z_owned_publisher_t` → `Publisher`、`ze_owned_advanced_publisher_t` → `AdvancedPublisher`。
-3. `Ref` クラスは `<Name>Ref` を採用（`KeyExprRef`, `SampleRef` に倣う）。loan_mut が必要な型のみ `<Name>MutRef`。
+1. 1 ファイル 1 主要型。`Publisher.cs` の中に `ZPublisherOptions`, `ZPublisherPutOptions` を入れる現状方針を踏襲。
+2. クラス名は C 側 ownership を明示し、BCL/Legacy との衝突回避のため `Z` prefix を付ける: `z_owned_publisher_t` → `ZOwnedPublisher`、`z_loaned_publisher_t` → `ZLoanedPublisher`、`ze_owned_advanced_publisher_t` → `ZOwnedAdvancedPublisher`。
+3. Loaned クラスは `ZLoaned<Name>` を採用。loan_mut は同じ `ZLoaned<Name>` を返し、必要ならメソッド側で mutability を分ける。
 4. クロージャ系は `<Target>Callback` の C# `delegate` + `<Target>Closure` の内部クラスにする。`SampleReceivedCallback` + `ClosureSample` を踏襲。
 5. オプションは `<Action>Options`。put なら `PublisherPutOptions`、delete なら `PublisherDeleteOptions`、declare なら `PublisherOptions`。
 6. **戻り値ポリシー（低レベル層）**: 失敗は常に `ZResult` を返す。結果オブジェクトが必要なものは `out` 引数で取る（`ZResult TryXxx(out T result)` 型）。例外は引数バリデーション（`ArgumentNullException` 等、呼び出し側の明らかなバグ）に限定。`Z_CHANNEL_NODATA` のような期待されるエラーも `ZResult` で返す。
 7. ハンドラ受け渡しは GCHandle + `static` `[MonoPInvokeCallback]` を必ず使う（IL2CPP/iOS で必須）。コールバック内では throw しない（ネイティブ側に伝播できずクラッシュするため、try-catch でログ＋無視を規約化）。
-8. **ctor で失敗しうる型は static factory + `ZResult` 返しを採用**。`new KeyExpr("...")` のような失敗 throw する ctor は低レベル層では作らず、`KeyExpr.TryCreate(string, out KeyExpr) -> ZResult` 形式にする。素の `new Foo()`（空ハンドル確保のみ、失敗しない）は OK。
-9. 既存 `Wrappers/` の型と名前が衝突しても、namespace が異なる（`Zenoh.Bindings` vs `Zenoh`）ので問題なし。同じ概念は同じ型名にして対応関係を保つ。
+8. **ctor で失敗しうる型は static factory + `ZResult` 返しを採用**。`z_result_t` を返す native constructor は `ZOwnedKeyExpr.TryCreateFromStr(..., out ZOwnedKeyExpr)` のようにし、throw する `Default()` などの便利 factory は置かない。素の `new Foo()`（空ハンドル確保のみ、失敗しない）は必要な型に限定する。
+9. 既存 `Wrappers/` の型とは namespace と `Z` prefix が異なる（`Zenoh.Bindings` vs `Zenoh.Legacy`）ため衝突しない。
 
 ---
 
@@ -141,17 +145,17 @@ namespace ルール:
 優先度はサンプル動作とユーザ要望ベース。各フェーズは独立に PR 化可能。
 
 ### Phase 0: 足回り整備（`Bindings/` 開設）
-- [ ] `Specs/wrapper-coverage-plan.md`（本ドキュメント）を確定
-- [ ] `Assets/ZenohPackage/Runtime/Bindings/` 作成、`namespace Zenoh.Bindings` 採用
-- [ ] 既存 `Wrappers/` の `ZResult` を移植（型は再宣言。既存版はそのまま残す）
-- [ ] `Session`, `KeyExpr`, `Bytes`, `Encoding`, `Sample`, `Publisher`, `Subscriber` を §1 の差分方針に従い低レベル化して `Bindings/` に新規実装。ctor 失敗→ static factory + `ZResult`、`throw` 排除
-- [ ] `Config` クラス新設（`z_config_default` / `zc_config_from_str` / `zc_config_from_file` をラップ。`Session.Open` から切り出す）
-- [ ] `Sample` を payload / encoding / kind / timestamp / source_info / attachment / express を取れる API に拡充
+- [x] `Specs/wrapper-coverage-plan.md`（本ドキュメント）を確定
+- [x] `Assets/ZenohPackage/Runtime/Bindings/` 作成、`namespace Zenoh.Bindings` 採用
+- [x] 既存 `Wrappers/` の `ZResult` を移植（型は再宣言。既存版はそのまま残す）
+- [x] `Session`, `KeyExpr`, `Bytes`, `Encoding`, `Sample`, `Publisher`, `Subscriber` を §1 の差分方針に従い低レベル化して `Bindings/` に新規実装。ctor 失敗→ static factory + `ZResult`、`throw` 排除
+- [x] `Config` クラス新設（`z_config_default` / `zc_config_from_str` / `zc_config_from_file` をラップ。`ZOwnedSession.TryCreateOpen` から切り出す）
+- [x] `Sample` を payload / encoding / kind / timestamp / source_info / attachment / express を取れる API に拡充
 - [ ] 既存サンプル（`RawSamples/`, `ZenohSampleScenes/`）はそのまま動くこと（`Zenoh.Bindings` を使う新サンプルは Phase 0 末尾に 1 つだけ追加）
 
 ### Phase 1: Query 系（Get/Queryable）— **既存ユーザ需要が高い**
-- [ ] `Reply` / `ReplyRef`, `ReplyErr` / `ReplyErrRef`
-- [ ] `Query` / `QueryRef`（queryable に渡される側）
+- [ ] `ZOwnedReply` / `ZLoanedReply`, `ZOwnedReplyErr` / `ZLoanedReplyErr`
+- [ ] `ZOwnedQuery` / `ZLoanedQuery`（queryable に渡される側）
 - [ ] `Queryable` + `QueryReceivedCallback` + `ClosureQuery`
 - [ ] `Session.Get(KeyExpr, ...)` の reply クロージャ版
 - [ ] `Session.Get(...)` の `FifoHandlerReply` / `RingHandlerReply` 版
@@ -171,7 +175,7 @@ namespace ルール:
 ### Phase 4: Subscriber の Pull モデル
 - [ ] `FifoHandlerSample` / `RingHandlerSample`
 - [ ] `Session.DeclareSubscriber(...).WithFifo(capacity)` 的なファクトリ
-- [ ] `recv / try_recv` を Ref に生やす
+- [ ] `recv / try_recv` を loaned クラスに生やす
 
 ### Phase 5: Bytes 拡張 + Serializer
 - [ ] `BytesWriter`, `BytesReader`, `BytesSliceIterator`
@@ -179,7 +183,7 @@ namespace ルール:
 - [ ] `Serializer` / `Deserializer`（`ze_serialize*`）
 
 ### Phase 6: Scout / Info / Hello
-- [ ] `Hello` / `HelloRef`
+- [ ] `ZOwnedHello` / `ZLoanedHello`
 - [ ] `Session.Scout(...)`（クロージャ版 + handler 版）
 - [ ] `Session.Info`（zid/peers/routers/transports/links）
 
@@ -244,8 +248,8 @@ namespace ルール:
 - `ZenohException` 階層の設計、どの API で例外化するか
 - `Bytes` のゼロコピー設計: Unity の `NativeArray<byte>` / `Span<byte>` ベースで `z_bytes_from_buf` の deleter コールバックをどう実装するか
 - Async / UniTask 統合: `Session.GetAsync(...)` を提供するか
-- ストリーミング受信（`IAsyncEnumerable<SampleRef>` 等）
+- ストリーミング受信（`IAsyncEnumerable<ZLoanedSample>` 等）
 
 ---
 
-最終更新: 2026-05-14
+最終更新: 2026-05-17
