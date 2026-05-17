@@ -10,71 +10,70 @@ namespace Zenoh.Bindings
         private bool disposed;
         private bool moved;
 
-        public ZOwnedConfig()
+        private ZOwnedConfig()
         {
             nativePtr = (z_owned_config_t*)Marshal.AllocHGlobal(sizeof(z_owned_config_t));
             ZenohNative.z_internal_config_null(nativePtr);
         }
 
-        public static ZOwnedConfig Default()
+        public static ZResult TryCreateDefault(out ZOwnedConfig value)
         {
-            ZOwnedConfig config = new ZOwnedConfig();
-            ZResult result = config.InitDefault();
-            if (result.IsError)
-            {
-                config.Dispose();
-                throw new InvalidOperationException(result.ToString());
-            }
-
-            return config;
+            value = new ZOwnedConfig();
+            return CompleteCreate(new ZResult(ZenohNative.z_config_default(value.nativePtr)), ref value);
         }
 
-        public ZResult InitDefault()
-        {
-            ThrowIfDisposedOrMoved();
-            return new ZResult(ZenohNative.z_config_default(nativePtr));
-        }
-
-        public ZResult FromStr(byte[] nullTerminatedUtf8)
+        public static ZResult TryCreateFromStr(byte[] nullTerminatedUtf8, out ZOwnedConfig value)
         {
             if (nullTerminatedUtf8 == null)
                 throw new ArgumentNullException(nameof(nullTerminatedUtf8));
-            ThrowIfDisposedOrMoved();
 
+            value = new ZOwnedConfig();
             fixed (byte* ptr = nullTerminatedUtf8)
             {
-                return new ZResult(ZenohNative.zc_config_from_str(nativePtr, ptr));
+                return CompleteCreate(new ZResult(ZenohNative.zc_config_from_str(value.nativePtr, ptr)), ref value);
             }
         }
 
-        public ZResult FromSubstr(byte[] utf8, nuint len)
+        public static ZResult TryCreateFromSubstr(byte[] utf8, nuint len, out ZOwnedConfig value)
         {
             if (utf8 == null)
                 throw new ArgumentNullException(nameof(utf8));
-            ThrowIfDisposedOrMoved();
 
+            value = new ZOwnedConfig();
             fixed (byte* ptr = utf8)
             {
-                return new ZResult(ZenohNative.zc_config_from_substr(nativePtr, ptr, len));
+                return CompleteCreate(new ZResult(ZenohNative.zc_config_from_substr(value.nativePtr, ptr, len)), ref value);
             }
         }
 
-        public ZResult FromFile(byte[] nullTerminatedUtf8Path)
+        public static ZResult TryCreateFromFile(byte[] nullTerminatedUtf8Path, out ZOwnedConfig value)
         {
             if (nullTerminatedUtf8Path == null)
                 throw new ArgumentNullException(nameof(nullTerminatedUtf8Path));
-            ThrowIfDisposedOrMoved();
 
+            value = new ZOwnedConfig();
             fixed (byte* ptr = nullTerminatedUtf8Path)
             {
-                return new ZResult(ZenohNative.zc_config_from_file(nativePtr, ptr));
+                return CompleteCreate(new ZResult(ZenohNative.zc_config_from_file(value.nativePtr, ptr)), ref value);
             }
         }
 
-        public ZResult FromEnv()
+        public static ZResult TryCreateFromFileSubstr(byte[] utf8Path, nuint len, out ZOwnedConfig value)
         {
-            ThrowIfDisposedOrMoved();
-            return new ZResult(ZenohNative.zc_config_from_env(nativePtr));
+            if (utf8Path == null)
+                throw new ArgumentNullException(nameof(utf8Path));
+
+            value = new ZOwnedConfig();
+            fixed (byte* ptr = utf8Path)
+            {
+                return CompleteCreate(new ZResult(ZenohNative.zc_config_from_file_substr(value.nativePtr, ptr, len)), ref value);
+            }
+        }
+
+        public static ZResult TryCreateFromEnv(out ZOwnedConfig value)
+        {
+            value = new ZOwnedConfig();
+            return CompleteCreate(new ZResult(ZenohNative.zc_config_from_env(value.nativePtr)), ref value);
         }
 
         public ZLoanedConfig Loan()
@@ -100,6 +99,17 @@ namespace Zenoh.Bindings
             ThrowIfDisposedOrMoved();
             moved = true;
             return nativePtr;
+        }
+
+        private static ZResult CompleteCreate(ZResult result, ref ZOwnedConfig value)
+        {
+            if (!result.IsOk)
+            {
+                value.Dispose();
+                value = null;
+            }
+
+            return result;
         }
 
         private void ThrowIfDisposed()

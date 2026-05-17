@@ -16,6 +16,10 @@ namespace Zenoh.Tests
             Assert.That(error.IsError, Is.True);
             Assert.That(error.IsOk, Is.False);
             Assert.That(error.ToString(), Is.EqualTo("Z_EINVAL"));
+
+            ZResult channelStatus = new ZResult(ZResultCode.Z_CHANNEL_NODATA);
+            Assert.That(channelStatus.IsChannelStatus, Is.True);
+            Assert.That(channelStatus.IsError, Is.False);
         }
 
         [Test]
@@ -23,8 +27,6 @@ namespace Zenoh.Tests
         {
             using (ZOwnedBytes bytes = ZOwnedBytes.CreateEmpty())
             {
-                Assert.That(bytes.Check(), Is.True);
-
                 ZLoanedBytes loaned = bytes.Loan();
                 Assert.That(loaned.Len(), Is.EqualTo((nuint)0));
                 Assert.That(loaned.IsEmpty(), Is.True);
@@ -55,10 +57,9 @@ namespace Zenoh.Tests
         {
             byte[] keyExpr = System.Text.Encoding.UTF8.GetBytes("demo/test");
 
-            using (ZOwnedKeyExpr owned = new ZOwnedKeyExpr())
+            ZResult result = ZOwnedKeyExpr.TryCreateFromSubstr(keyExpr, (nuint)keyExpr.Length, out ZOwnedKeyExpr owned);
+            using (owned)
             {
-                ZResult result = owned.FromSubstr(keyExpr, (nuint)keyExpr.Length);
-
                 Assert.That(result.IsOk, Is.True, result.ToString());
                 Assert.That(owned.Check(), Is.True);
                 Assert.DoesNotThrow(() => owned.Loan());
@@ -70,10 +71,9 @@ namespace Zenoh.Tests
         {
             byte[] encoding = System.Text.Encoding.UTF8.GetBytes("text/plain");
 
-            using (ZOwnedEncoding owned = new ZOwnedEncoding())
+            ZResult result = ZOwnedEncoding.TryCreateFromSubstr(encoding, (nuint)encoding.Length, out ZOwnedEncoding owned);
+            using (owned)
             {
-                ZResult result = owned.FromSubstr(encoding, (nuint)encoding.Length);
-
                 Assert.That(result.IsOk, Is.True, result.ToString());
                 Assert.That(owned.Check(), Is.True);
                 Assert.That(owned.Loan().Equals(ZEncodingConstants.TextPlain()), Is.True);
@@ -83,8 +83,10 @@ namespace Zenoh.Tests
         [Test]
         public void ZOwnedConfig_DefaultCanBeCreatedAndLoaned()
         {
-            using (ZOwnedConfig config = ZOwnedConfig.Default())
+            ZResult result = ZOwnedConfig.TryCreateDefault(out ZOwnedConfig config);
+            using (config)
             {
+                Assert.That(result.IsOk, Is.True, result.ToString());
                 Assert.That(config.Check(), Is.True);
                 Assert.DoesNotThrow(() => config.Loan());
             }
@@ -95,11 +97,13 @@ namespace Zenoh.Tests
         {
             ZPublisherPutOptions options = ZPublisherPutOptions.Default();
 
-            using (ZOwnedEncoding encoding = new ZOwnedEncoding())
+            ZResult result = ZOwnedEncoding.TryCreateFromSubstr(
+                System.Text.Encoding.UTF8.GetBytes("text/plain"),
+                (nuint)"text/plain".Length,
+                out ZOwnedEncoding encoding);
+            using (encoding)
             {
-                Assert.That(encoding.FromSubstr(
-                    System.Text.Encoding.UTF8.GetBytes("text/plain"),
-                    (nuint)"text/plain".Length).IsOk, Is.True);
+                Assert.That(result.IsOk, Is.True, result.ToString());
 
                 options.MoveEncoding(encoding);
 

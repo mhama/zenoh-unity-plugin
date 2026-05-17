@@ -29,7 +29,10 @@ namespace Zenoh.Bindings
 
         public ZResultCode ResultCode { get; }
         public bool IsOk => ResultCode == ZResultCode.Z_OK;
-        public bool IsError => !IsOk;
+        public bool IsChannelStatus =>
+            ResultCode == ZResultCode.Z_CHANNEL_DISCONNECTED ||
+            ResultCode == ZResultCode.Z_CHANNEL_NODATA;
+        public bool IsError => (int)ResultCode < 0;
 
         internal ZResult(z_result_t result)
         {

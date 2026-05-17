@@ -20,7 +20,7 @@ namespace Zenoh.Bindings
             return options;
         }
 
-        public void InitDefault()
+        private void InitDefault()
         {
             fixed (z_subscriber_options_t* ptr = &Native)
             {
@@ -48,6 +48,8 @@ namespace Zenoh.Bindings
         public void Set(ZClosureSampleCall call, ZClosureSampleDrop drop, IntPtr context)
         {
             ThrowIfDisposedOrMoved();
+            // Replacing an unconsumed closure releases the managed state without
+            // invoking the previous native drop callback.
             if (stateHandle.IsAllocated)
                 stateHandle.Free();
 
@@ -136,6 +138,8 @@ namespace Zenoh.Bindings
             {
                 if (!moved && ZenohNative.z_internal_closure_sample_check(nativePtr))
                     ZenohNative.z_closure_sample_drop((z_moved_closure_sample_t*)nativePtr);
+                // If native storage was invalidated before it was moved, release
+                // any managed state that native drop can no longer reach.
                 else if (!moved && stateHandle.IsAllocated)
                     stateHandle.Free();
 

@@ -15,7 +15,7 @@ namespace Zenoh.Bindings
             return options;
         }
 
-        public void InitDefault()
+        private void InitDefault()
         {
             fixed (z_open_options_t* ptr = &Native)
             {
@@ -35,7 +35,7 @@ namespace Zenoh.Bindings
             return options;
         }
 
-        public void InitDefault()
+        private void InitDefault()
         {
             fixed (z_close_options_t* ptr = &Native)
             {
@@ -50,24 +50,30 @@ namespace Zenoh.Bindings
         private bool disposed;
         private bool moved;
 
-        public ZOwnedSession()
+        private ZOwnedSession()
         {
             nativePtr = (z_owned_session_t*)Marshal.AllocHGlobal(sizeof(z_owned_session_t));
             ZenohNative.z_internal_session_null(nativePtr);
         }
 
-        public ZResult Open(ZOwnedConfig config, ZOpenOptions options)
+        public static ZResult TryCreateOpen(ZOwnedConfig config, ZOpenOptions options, out ZOwnedSession session)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
-            ThrowIfDisposedOrMoved();
 
+            session = new ZOwnedSession();
             fixed (z_open_options_t* optionsPtr = &options.Native)
             {
-                ZResult result = new ZResult(ZenohNative.z_open(nativePtr, (z_moved_config_t*)config.MoveToNative(), optionsPtr));
+                ZResult result = new ZResult(ZenohNative.z_open(session.nativePtr, (z_moved_config_t*)config.MoveToNative(), optionsPtr));
                 config.Dispose();
+                if (!result.IsOk)
+                {
+                    session.Dispose();
+                    session = null;
+                }
+
                 return result;
             }
         }

@@ -10,33 +10,47 @@ namespace Zenoh.Bindings
         private bool disposed;
         private bool moved;
 
-        public ZOwnedKeyExpr()
+        private ZOwnedKeyExpr()
         {
             nativePtr = (z_owned_keyexpr_t*)Marshal.AllocHGlobal(sizeof(z_owned_keyexpr_t));
             ZenohNative.z_internal_keyexpr_null(nativePtr);
         }
 
-        public ZResult FromStr(byte[] nullTerminatedUtf8)
+        public static ZResult TryCreateFromStr(byte[] nullTerminatedUtf8, out ZOwnedKeyExpr value)
         {
             if (nullTerminatedUtf8 == null)
                 throw new ArgumentNullException(nameof(nullTerminatedUtf8));
-            ThrowIfDisposedOrMoved();
 
+            value = new ZOwnedKeyExpr();
             fixed (byte* ptr = nullTerminatedUtf8)
             {
-                return new ZResult(ZenohNative.z_keyexpr_from_str(nativePtr, ptr));
+                ZResult result = new ZResult(ZenohNative.z_keyexpr_from_str(value.nativePtr, ptr));
+                if (!result.IsOk)
+                {
+                    value.Dispose();
+                    value = null;
+                }
+
+                return result;
             }
         }
 
-        public ZResult FromSubstr(byte[] utf8, nuint len)
+        public static ZResult TryCreateFromSubstr(byte[] utf8, nuint len, out ZOwnedKeyExpr value)
         {
             if (utf8 == null)
                 throw new ArgumentNullException(nameof(utf8));
-            ThrowIfDisposedOrMoved();
 
+            value = new ZOwnedKeyExpr();
             fixed (byte* ptr = utf8)
             {
-                return new ZResult(ZenohNative.z_keyexpr_from_substr(nativePtr, ptr, len));
+                ZResult result = new ZResult(ZenohNative.z_keyexpr_from_substr(value.nativePtr, ptr, len));
+                if (!result.IsOk)
+                {
+                    value.Dispose();
+                    value = null;
+                }
+
+                return result;
             }
         }
 
@@ -96,7 +110,7 @@ namespace Zenoh.Bindings
         }
     }
 
-    public unsafe sealed class ZLoanedKeyExpr
+    public unsafe sealed class ZLoanedKeyExpr : IEquatable<ZLoanedKeyExpr>
     {
         private readonly object owner;
         internal readonly z_loaned_keyexpr_t* NativePointer;
@@ -110,9 +124,19 @@ namespace Zenoh.Bindings
         public bool Equals(ZLoanedKeyExpr other)
         {
             if (other == null)
-                throw new ArgumentNullException(nameof(other));
+                return false;
 
             return ZenohNative.z_keyexpr_equals(NativePointer, other.NativePointer);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ZLoanedKeyExpr other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return 0;
         }
     }
 }

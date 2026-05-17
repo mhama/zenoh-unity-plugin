@@ -9,6 +9,7 @@ namespace Zenoh.Bindings
         private z_owned_bytes_t* nativePtr;
         private bool disposed;
         private bool moved;
+        private bool initialized;
 
         private ZOwnedBytes()
         {
@@ -20,6 +21,7 @@ namespace Zenoh.Bindings
         {
             ZOwnedBytes bytes = new ZOwnedBytes();
             ZenohNative.z_bytes_empty(bytes.nativePtr);
+            bytes.initialized = true;
             return bytes;
         }
 
@@ -33,10 +35,14 @@ namespace Zenoh.Bindings
             fixed (byte* ptr = data)
             {
                 ZResult result = new ZResult(ZenohNative.z_bytes_copy_from_buf(value.nativePtr, ptr, len));
-                if (result.IsError)
+                if (!result.IsOk)
                 {
                     value.Dispose();
                     value = null;
+                }
+                else
+                {
+                    value.initialized = true;
                 }
 
                 return result;
@@ -53,10 +59,14 @@ namespace Zenoh.Bindings
             fixed (byte* ptr = nullTerminatedUtf8)
             {
                 ZResult result = new ZResult(ZenohNative.z_bytes_copy_from_str(value.nativePtr, ptr));
-                if (result.IsError)
+                if (!result.IsOk)
                 {
                     value.Dispose();
                     value = null;
+                }
+                else
+                {
+                    value.initialized = true;
                 }
 
                 return result;
@@ -108,7 +118,7 @@ namespace Zenoh.Bindings
 
             if (nativePtr != null)
             {
-                if (!moved && ZenohNative.z_internal_bytes_check(nativePtr))
+                if (!moved && initialized)
                     ZenohNative.z_bytes_drop((z_moved_bytes_t*)nativePtr);
 
                 Marshal.FreeHGlobal((IntPtr)nativePtr);

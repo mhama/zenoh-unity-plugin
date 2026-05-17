@@ -31,17 +31,26 @@ namespace Zenoh.Tests
             byte[] keyExprBytes = System.Text.Encoding.UTF8.GetBytes("unity/test/bindings/pubsub");
             byte[] payload = System.Text.Encoding.UTF8.GetBytes("hello from Unity TestRunner");
 
+            ZResult subscriberKeyExprResult = ZOwnedKeyExpr.TryCreateFromSubstr(
+                keyExprBytes,
+                (nuint)keyExprBytes.Length,
+                out ZOwnedKeyExpr subscriberKeyExpr);
+            Assert.That(subscriberKeyExprResult.IsOk, Is.True, subscriberKeyExprResult.ToString());
+
+            ZResult publisherKeyExprResult = ZOwnedKeyExpr.TryCreateFromSubstr(
+                keyExprBytes,
+                (nuint)keyExprBytes.Length,
+                out ZOwnedKeyExpr publisherKeyExpr);
+            Assert.That(publisherKeyExprResult.IsOk, Is.True, publisherKeyExprResult.ToString());
+
             using (ZOwnedSession subscriberSession = OpenLocalhostZenohdSession())
             using (ZOwnedSession publisherSession = OpenLocalhostZenohdSession())
-            using (ZOwnedKeyExpr subscriberKeyExpr = new ZOwnedKeyExpr())
-            using (ZOwnedKeyExpr publisherKeyExpr = new ZOwnedKeyExpr())
+            using (subscriberKeyExpr)
+            using (publisherKeyExpr)
             using (ZOwnedSubscriber subscriber = new ZOwnedSubscriber())
             using (ZOwnedPublisher publisher = new ZOwnedPublisher())
             using (ManualResetEventSlim received = new ManualResetEventSlim(false))
             {
-                Assert.That(subscriberKeyExpr.FromSubstr(keyExprBytes, (nuint)keyExprBytes.Length).IsOk, Is.True);
-                Assert.That(publisherKeyExpr.FromSubstr(keyExprBytes, (nuint)keyExprBytes.Length).IsOk, Is.True);
-
                 int receivedPayloadLength = -1;
 
                 using (ZOwnedClosureSample callback = new ZOwnedClosureSample())
@@ -98,8 +107,7 @@ namespace Zenoh.Tests
             Stopwatch stopwatch = Stopwatch.StartNew();
             while (stopwatch.Elapsed < TimeSpan.FromSeconds(5))
             {
-                ZMatchingStatus matchingStatus = new ZMatchingStatus();
-                ZResult result = publisher.GetMatchingStatus(matchingStatus);
+                ZResult result = publisher.TryGetMatchingStatus(out ZMatchingStatus matchingStatus);
                 Assert.That(result.IsOk, Is.True, result.ToString());
 
                 if (matchingStatus.Matching)
@@ -115,21 +123,24 @@ namespace Zenoh.Tests
 
         private static ZOwnedSession OpenLocalhostZenohdSession()
         {
-            ZOwnedConfig config = new ZOwnedConfig();
-            ZResult configResult = config.FromStr(NullTerminatedUtf8(LocalhostZenohdClientConfig));
-            Assert.That(configResult.IsOk, Is.True, configResult.ToString());
-
-            ZOpenOptions options = ZOpenOptions.Default();
-
-            ZOwnedSession session = new ZOwnedSession();
-            ZResult openResult = session.Open(config, options);
-            if (openResult.IsError)
+            ZResult configResult = ZOwnedConfig.TryCreateFromStr(
+                NullTerminatedUtf8(LocalhostZenohdClientConfig),
+                out ZOwnedConfig config);
+            using (config)
             {
-                session.Dispose();
-                Assert.Fail($"z_open failed. Ensure zenohd is listening on {ZenohdTestServer.Endpoint}. Result: {openResult}");
-            }
+                Assert.That(configResult.IsOk, Is.True, configResult.ToString());
 
-            return session;
+                ZOpenOptions options = ZOpenOptions.Default();
+
+                ZResult openResult = ZOwnedSession.TryCreateOpen(config, options, out ZOwnedSession session);
+                if (!openResult.IsOk)
+                {
+                    session?.Dispose();
+                    Assert.Fail($"z_open failed. Ensure zenohd is listening on {ZenohdTestServer.Endpoint}. Result: {openResult}");
+                }
+
+                return session;
+            }
         }
 
         private static void CloseSession(ZOwnedSession session)

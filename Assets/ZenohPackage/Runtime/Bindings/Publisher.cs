@@ -15,7 +15,7 @@ namespace Zenoh.Bindings
             return options;
         }
 
-        public void InitDefault()
+        private void InitDefault()
         {
             fixed (z_publisher_options_t* ptr = &Native)
             {
@@ -46,7 +46,7 @@ namespace Zenoh.Bindings
             return options;
         }
 
-        public void InitDefault()
+        private void InitDefault()
         {
             fixed (z_publisher_put_options_t* ptr = &Native)
             {
@@ -77,11 +77,16 @@ namespace Zenoh.Bindings
         }
     }
 
-    public unsafe sealed class ZMatchingStatus
+    public readonly struct ZMatchingStatus
     {
-        internal z_matching_status_t Native;
+        private readonly bool matching;
 
-        public bool Matching => Native.matching;
+        internal ZMatchingStatus(z_matching_status_t native)
+        {
+            matching = native.matching;
+        }
+
+        public bool Matching => matching;
     }
 
     public unsafe sealed class ZOwnedPublisher : IDisposable
@@ -184,15 +189,12 @@ namespace Zenoh.Bindings
             }
         }
 
-        public ZResult GetMatchingStatus(ZMatchingStatus matchingStatus)
+        public ZResult TryGetMatchingStatus(out ZMatchingStatus matchingStatus)
         {
-            if (matchingStatus == null)
-                throw new ArgumentNullException(nameof(matchingStatus));
-
-            fixed (z_matching_status_t* matchingStatusPtr = &matchingStatus.Native)
-            {
-                return new ZResult(ZenohNative.z_publisher_get_matching_status(NativePointer, matchingStatusPtr));
-            }
+            z_matching_status_t native = default;
+            ZResult result = new ZResult(ZenohNative.z_publisher_get_matching_status(NativePointer, &native));
+            matchingStatus = result.IsOk ? new ZMatchingStatus(native) : default;
+            return result;
         }
     }
 }
