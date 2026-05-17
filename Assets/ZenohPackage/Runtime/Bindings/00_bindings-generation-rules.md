@@ -52,6 +52,8 @@ shape.
      semantics may be type-specific; for example, `z_owned_bytes_t` created by
      `z_bytes_empty()` can be loaned and dropped even though
      `z_internal_bytes_check()` returns false.
+   - `Check()` must throw `ObjectDisposedException` when the wrapper has been
+     disposed or moved.
 5. If the receiver is a loaned value, expose an instance method on
    `ZLoaned<Type>`.
    - Remove `<type>_` and PascalCase the suffix.
@@ -63,7 +65,10 @@ shape.
      - `z_bytes_len(z_loaned_bytes_t*)` => `ZLoanedBytes.Len()`
      - `z_sample_payload(z_loaned_sample_t*)` => `ZLoanedSample.Payload()`
 6. If the native function initializes an options struct named `z_*_options_t`,
-   expose a static `Default()` factory on the options class.
+   expose a static default factory on the options class.
+   - If the native return type is `void`, use `Default()`.
+   - If the native return type is `z_result_t`, use
+     `TryCreateDefault(out Z*Options options)`.
    - Keep `InitDefault()` private unless generated implementation code needs
      broader access.
    - Store the native struct in `internal z_<X>_options_t Native;`.
@@ -79,6 +84,8 @@ shape.
        `ZOpenOptions.Default()`
 7. If the native function consumes an owned value through a `z_moved_*` pointer,
    expose the operation as a method whose parameter is the owned wrapper type.
+   - Implement `Take()` on an owned wrapper only when at least one zenoh-c API
+     that consumes that owned type actually exists.
    - For function arguments, the binding method must call `Take()`, keep the
      returned storage alive with `using` until the native call returns, and pass
      `(z_moved_<type>_t*)storage.Pointer`.
@@ -102,11 +109,16 @@ shape.
     - Utility functions go in `Z<Concept>Utils`.
 11. Native enums are internal in `Zenoh.Plugins`. If a public Binding method
     returns a native enum concept, redeclare it as a public Binding enum.
-12. Output structs are returned with `Try*` methods using `out`.
+12. Native APIs that return direct `z_<type>_t*` pointers, such as timestamp or
+    source_info accessors, must still be wrapped before public exposure.
+    - Use `ZLoaned<Type>` naming when the returned pointer is borrowed from the
+      receiver.
+    - Do not expose the raw pointer from public Binding APIs.
+13. Output structs are returned with `Try*` methods using `out`.
     - Example:
       - `z_publisher_get_matching_status(...)` =>
         `ZLoanedPublisher.TryGetMatchingStatus(out ZMatchingStatus status)`
-13. If a native equality function is exposed, implement `IEquatable<T>`,
+14. If a native equality function is exposed, implement `IEquatable<T>`,
     `Equals(object)`, and `GetHashCode()`.
 
 ## Factory and failure handling
@@ -142,9 +154,9 @@ for allocation plus `z_internal_*_null`.
 For owned wrappers (`ZOwned*`):
 
 - Allocate native storage with
-  `Zenoh.Bindings.Internal.NativeMemory.Alloc<T>()` in the constructor.
+  `Zenoh.Bindings.Internal.NativeStorage.Alloc<T>()` in the constructor.
 - Initialize to gravestone state via `z_internal_<type>_null`.
-- Free storage with `Zenoh.Bindings.Internal.NativeMemory.Free(ptr)` in
+- Free storage with `Zenoh.Bindings.Internal.NativeStorage.Free(ptr)` in
   `Dispose()` only when storage is still owned, meaning it has not been
   `Take()`-d.
 
@@ -154,12 +166,14 @@ For owned wrappers (`ZOwned*`):
 - `ZLoaned*` does not own native memory and stores a reference to its owner to
   keep the owner alive for the loan's managed lifetime.
 - All native heap allocations and frees go through
-  `Zenoh.Bindings.Internal.NativeMemory`. Direct use of
+  `Zenoh.Bindings.Internal.NativeStorage`. Direct use of
   `Marshal.AllocHGlobal` / `Marshal.FreeHGlobal` is prohibited outside this
   utility.
 - Ownership of allocated storage is expressed by
   `Zenoh.Bindings.Internal.OwnedStorage<T>`.
 - `Take()` is the single consume primitive on `ZOwned*` types.
+  - It is implemented only for owned types that are consumed by a real zenoh-c
+    API.
   - It moves both the native value and its storage ownership to the caller.
   - It returns `OwnedStorage<T>` holding the native pointer.
   - After `Take()`, the wrapper is fully inert: `moved = true`,
@@ -173,11 +187,20 @@ For owned wrappers (`ZOwned*`):
   returned `OwnedStorage<T>` and disposes it from the options `Dispose()`.
 - Binding methods must not automatically dispose options; options lifetime is
   the caller's responsibility, typically via `using`.
+- Options that adopt `OwnedStorage<T>` must always be released by `using` or an
+  explicit `Dispose()` call. If the caller forgets, the managed object and
+  storage may eventually be reclaimed by finalizers, but the native drop
+  function is not called for adopted values, so native resources can leak.
 - Options wrappers that adopt `OwnedStorage<T>` must not have finalizers, to
   avoid finalizer-order races between options native drop and
   `OwnedStorage<T>` storage release.
 - Replacing an adopted options field must release the previously adopted
   storage before storing the new one.
+- When native consumes a moved field inside an options struct, that field's
+  storage is written back to the gravestone state. If the same options instance
+  is reused for another `Put`, `Declare`, or similar native call, every moved
+  field that should be sent again must be set again with the corresponding
+  `Set*` method.
 - `Dispose()` must be idempotent.
 - `Dispose()` must call the native drop function only when the value is valid
   and has not been moved.

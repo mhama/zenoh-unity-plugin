@@ -12,7 +12,7 @@ namespace Zenoh.Bindings
 
         private ZOwnedConfig()
         {
-            nativePtr = NativeMemory.Alloc<z_owned_config_t>();
+            nativePtr = NativeStorage.Alloc<z_owned_config_t>();
             ZenohNative.z_internal_config_null(nativePtr);
         }
 
@@ -137,7 +137,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_config_check(nativePtr))
                     ZenohNative.z_config_drop((z_moved_config_t*)nativePtr);
 
-                NativeMemory.Free(nativePtr);
+                NativeStorage.Free(nativePtr);
                 nativePtr = null;
             }
 

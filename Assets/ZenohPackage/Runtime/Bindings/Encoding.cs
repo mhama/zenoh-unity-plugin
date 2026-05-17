@@ -12,7 +12,7 @@ namespace Zenoh.Bindings
 
         private ZOwnedEncoding()
         {
-            nativePtr = NativeMemory.Alloc<z_owned_encoding_t>();
+            nativePtr = NativeStorage.Alloc<z_owned_encoding_t>();
             ZenohNative.z_internal_encoding_null(nativePtr);
         }
 
@@ -104,7 +104,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_encoding_check(nativePtr))
                     ZenohNative.z_encoding_drop((z_moved_encoding_t*)nativePtr);
 
-                NativeMemory.Free(nativePtr);
+                NativeStorage.Free(nativePtr);
                 nativePtr = null;
             }
 

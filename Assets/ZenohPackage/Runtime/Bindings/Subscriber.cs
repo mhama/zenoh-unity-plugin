@@ -42,7 +42,7 @@ namespace Zenoh.Bindings
 
         public ZOwnedClosureSample()
         {
-            nativePtr = NativeMemory.Alloc<z_owned_closure_sample_t>();
+            nativePtr = NativeStorage.Alloc<z_owned_closure_sample_t>();
             ZenohNative.z_internal_closure_sample_null(nativePtr);
         }
 
@@ -146,7 +146,7 @@ namespace Zenoh.Bindings
                 else if (!moved && stateHandle.IsAllocated)
                     stateHandle.Free();
 
-                NativeMemory.Free(nativePtr);
+                NativeStorage.Free(nativePtr);
                 nativePtr = null;
             }
 
@@ -202,7 +202,7 @@ namespace Zenoh.Bindings
 
         public ZOwnedSubscriber()
         {
-            nativePtr = NativeMemory.Alloc<z_owned_subscriber_t>();
+            nativePtr = NativeStorage.Alloc<z_owned_subscriber_t>();
             ZenohNative.z_internal_subscriber_null(nativePtr);
         }
 
@@ -280,7 +280,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_subscriber_check(nativePtr))
                     ZenohNative.z_subscriber_drop((z_moved_subscriber_t*)nativePtr);
 
-                NativeMemory.Free(nativePtr);
+                NativeStorage.Free(nativePtr);
                 nativePtr = null;
             }
 

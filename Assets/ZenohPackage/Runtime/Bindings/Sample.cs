@@ -18,7 +18,7 @@ namespace Zenoh.Bindings
 
         public ZOwnedSample()
         {
-            nativePtr = NativeMemory.Alloc<z_owned_sample_t>();
+            nativePtr = NativeStorage.Alloc<z_owned_sample_t>();
             ZenohNative.z_internal_sample_null(nativePtr);
         }
 
@@ -81,7 +81,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_sample_check(nativePtr))
                     ZenohNative.z_sample_drop((z_moved_sample_t*)nativePtr);
 
-                NativeMemory.Free(nativePtr);
+                NativeStorage.Free(nativePtr);
                 nativePtr = null;
             }
 

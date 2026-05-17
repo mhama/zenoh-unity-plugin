@@ -67,7 +67,7 @@ namespace ルール:
 ### 2-A. 機械的に変換できる（=規則化してテンプレートに落とせる）
 
 すべての Zenoh 「Owned 型」は同じ寿命パターンに従う:
-- `z_owned_X_t` の格納域を `Zenoh.Bindings.Internal.NativeMemory.Alloc<T>()` で確保
+- `z_owned_X_t` の格納域を `Zenoh.Bindings.Internal.NativeStorage.Alloc<T>()` で確保
 - `z_X_loan(owned_ptr) -> z_loaned_X_t*`
 - `z_X_drop((z_moved_X_t*)owned_ptr)` で値を drop
 - `Take()` で値と格納域を `OwnedStorage<T>` にまとめて移譲し、以後 source wrapper を inert 化
@@ -76,9 +76,9 @@ namespace ルール:
 
 1. **Owned ラッパークラスの骨格**
    - private `z_owned_X_t* nativePtr`, `bool disposed`, `bool moved`
-   - ctor で `NativeMemory.Alloc<T>()` し、`z_internal_X_null` で gravestone 初期化
+   - ctor で `NativeStorage.Alloc<T>()` し、`z_internal_X_null` で gravestone 初期化
    - `ZLoanedX Loan()` で `z_X_loan` を呼び `ZLoanedX` を返す
-   - `Dispose()` で値が valid かつ未 move のときだけ `z_X_drop` し、格納域は `NativeMemory.Free(ptr)` で解放
+   - `Dispose()` で値が valid かつ未 move のときだけ `z_X_drop` し、格納域は `NativeStorage.Free(ptr)` で解放
    - `Take()` で `OwnedStorage<z_owned_X_t>` を返し、`nativePtr = null`, `moved = true` にする
    - 必要な範囲で `internal NativePointer` 公開
 2. **Loaned クラスの骨格**
@@ -120,7 +120,7 @@ namespace ルール:
 
 既存実装で **採用** されているパターン:
 - `ZOwned*`（`IDisposable`） / `ZLoaned*`（borrow） の 2 クラスペア
-- `NativeMemory.Alloc<T>()` / `NativeMemory.Free(ptr)` でハンドル領域を一元管理
+- `NativeStorage.Alloc<T>()` / `NativeStorage.Free(ptr)` でハンドル領域を一元管理
 - `Take()` が唯一の消費プリミティブで、`OwnedStorage<T>` に格納域所有権を移す
 - finalizer は owned wrapper と `OwnedStorage<T>` の安全網に限定し、options wrapper には置かない
 - `internal NativePointer` で同一 namespace から低レベルアクセス可

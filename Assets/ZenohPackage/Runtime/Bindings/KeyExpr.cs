@@ -12,7 +12,7 @@ namespace Zenoh.Bindings
 
         private ZOwnedKeyExpr()
         {
-            nativePtr = NativeMemory.Alloc<z_owned_keyexpr_t>();
+            nativePtr = NativeStorage.Alloc<z_owned_keyexpr_t>();
             ZenohNative.z_internal_keyexpr_null(nativePtr);
         }
 
@@ -98,7 +98,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_keyexpr_check(nativePtr))
                     ZenohNative.z_keyexpr_drop((z_moved_keyexpr_t*)nativePtr);
 
-                NativeMemory.Free(nativePtr);
+                NativeStorage.Free(nativePtr);
                 nativePtr = null;
             }
 

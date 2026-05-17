@@ -13,7 +13,7 @@ namespace Zenoh.Bindings
 
         private ZOwnedBytes()
         {
-            nativePtr = NativeMemory.Alloc<z_owned_bytes_t>();
+            nativePtr = NativeStorage.Alloc<z_owned_bytes_t>();
             ZenohNative.z_internal_bytes_null(nativePtr);
         }
 
@@ -124,7 +124,7 @@ namespace Zenoh.Bindings
                 if (!moved && initialized)
                     ZenohNative.z_bytes_drop((z_moved_bytes_t*)nativePtr);
 
-                NativeMemory.Free(nativePtr);
+                NativeStorage.Free(nativePtr);
                 nativePtr = null;
             }
 

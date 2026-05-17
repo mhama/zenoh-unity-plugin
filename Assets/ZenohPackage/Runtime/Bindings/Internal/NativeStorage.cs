@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Zenoh.Bindings.Internal
 {
-    internal static unsafe class NativeMemory
+    internal static unsafe class NativeStorage
     {
         public static T* Alloc<T>() where T : unmanaged
         {
@@ -45,7 +45,7 @@ namespace Zenoh.Bindings.Internal
             if (pointer == null)
                 return;
 
-            NativeMemory.Free(pointer);
+            NativeStorage.Free(pointer);
             pointer = null;
         }
     }
