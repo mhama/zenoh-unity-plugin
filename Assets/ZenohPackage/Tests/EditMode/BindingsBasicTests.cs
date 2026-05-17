@@ -93,7 +93,7 @@ namespace Zenoh.Tests
         }
 
         [Test]
-        public void ZPublisherPutOptions_MoveEncodingPreventsFurtherEncodingUse()
+        public void ZPublisherPutOptions_SetEncodingPreventsFurtherEncodingUse()
         {
             ZResult result = ZOwnedEncoding.TryCreateFromSubstr(
                 System.Text.Encoding.UTF8.GetBytes("text/plain"),
@@ -104,7 +104,7 @@ namespace Zenoh.Tests
             {
                 Assert.That(result.IsOk, Is.True, result.ToString());
 
-                options.MoveEncoding(encoding);
+                options.SetEncoding(encoding);
 
                 Assert.Throws<ObjectDisposedException>(() => encoding.Check());
                 Assert.Throws<ObjectDisposedException>(() => encoding.Loan());
@@ -127,8 +127,8 @@ namespace Zenoh.Tests
 
             using (ZPublisherPutOptions options = ZPublisherPutOptions.Default())
             {
-                options.MoveAttachment(attachment);
-                options.MoveEncoding(encoding);
+                options.SetAttachment(attachment);
+                options.SetEncoding(encoding);
 
                 Assert.Throws<ObjectDisposedException>(() => attachment.Check());
                 Assert.Throws<ObjectDisposedException>(() => encoding.Check());

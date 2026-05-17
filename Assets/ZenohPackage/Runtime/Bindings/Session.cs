@@ -56,18 +56,18 @@ namespace Zenoh.Bindings
             ZenohNative.z_internal_session_null(nativePtr);
         }
 
-        public static ZResult TryCreateOpen(ZOwnedConfig config, ZOpenOptions options, out ZOwnedSession session)
+        public static ZResult TryCreateOpen(ZOwnedConfig movingConfig, ZOpenOptions options, out ZOwnedSession session)
         {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
+            if (movingConfig == null)
+                throw new ArgumentNullException(nameof(movingConfig));
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
 
             session = new ZOwnedSession();
             fixed (z_open_options_t* optionsPtr = &options.Native)
             {
-                ZResult result = new ZResult(ZenohNative.z_open(session.nativePtr, (z_moved_config_t*)config.MoveToNative(), optionsPtr));
-                config.Dispose();
+                ZResult result = new ZResult(ZenohNative.z_open(session.nativePtr, (z_moved_config_t*)movingConfig.MoveToNative(), optionsPtr));
+                movingConfig.Dispose();
                 if (!result.IsOk)
                 {
                     session.Dispose();

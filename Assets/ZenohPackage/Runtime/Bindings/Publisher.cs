@@ -26,14 +26,14 @@ namespace Zenoh.Bindings
             }
         }
 
-        public void MoveEncoding(ZOwnedEncoding encoding)
+        public void SetEncoding(ZOwnedEncoding movingEncoding)
         {
-            if (encoding == null)
-                throw new ArgumentNullException(nameof(encoding));
+            if (movingEncoding == null)
+                throw new ArgumentNullException(nameof(movingEncoding));
             ThrowIfDisposed();
 
             ReleaseEncoding();
-            adoptedEncoding = encoding.MoveStorageToNative();
+            adoptedEncoding = movingEncoding.MoveStorageToNative();
 
             fixed (z_publisher_options_t* ptr = &Native)
             {
@@ -101,14 +101,14 @@ namespace Zenoh.Bindings
             }
         }
 
-        public void MoveEncoding(ZOwnedEncoding encoding)
+        public void SetEncoding(ZOwnedEncoding movingEncoding)
         {
-            if (encoding == null)
-                throw new ArgumentNullException(nameof(encoding));
+            if (movingEncoding == null)
+                throw new ArgumentNullException(nameof(movingEncoding));
             ThrowIfDisposed();
 
             ReleaseEncoding();
-            adoptedEncoding = encoding.MoveStorageToNative();
+            adoptedEncoding = movingEncoding.MoveStorageToNative();
 
             fixed (z_publisher_put_options_t* ptr = &Native)
             {
@@ -116,14 +116,14 @@ namespace Zenoh.Bindings
             }
         }
 
-        public void MoveAttachment(ZOwnedBytes attachment)
+        public void SetAttachment(ZOwnedBytes movingAttachment)
         {
-            if (attachment == null)
-                throw new ArgumentNullException(nameof(attachment));
+            if (movingAttachment == null)
+                throw new ArgumentNullException(nameof(movingAttachment));
             ThrowIfDisposed();
 
             ReleaseAttachment();
-            adoptedAttachment = attachment.MoveStorageToNative();
+            adoptedAttachment = movingAttachment.MoveStorageToNative();
 
             fixed (z_publisher_put_options_t* ptr = &Native)
             {
@@ -289,10 +289,10 @@ namespace Zenoh.Bindings
             this.owner = owner;
         }
 
-        public ZResult Put(ZOwnedBytes payload, ZPublisherPutOptions options)
+        public ZResult Put(ZOwnedBytes movingPayload, ZPublisherPutOptions options)
         {
-            if (payload == null)
-                throw new ArgumentNullException(nameof(payload));
+            if (movingPayload == null)
+                throw new ArgumentNullException(nameof(movingPayload));
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
             options.ThrowIfDisposed();
@@ -301,11 +301,11 @@ namespace Zenoh.Bindings
             {
                 try
                 {
-                    return new ZResult(ZenohNative.z_publisher_put(NativePointer, (z_moved_bytes_t*)payload.MoveToNative(), optionsPtr));
+                    return new ZResult(ZenohNative.z_publisher_put(NativePointer, (z_moved_bytes_t*)movingPayload.MoveToNative(), optionsPtr));
                 }
                 finally
                 {
-                    payload.Dispose();
+                    movingPayload.Dispose();
                     options.Dispose();
                 }
             }

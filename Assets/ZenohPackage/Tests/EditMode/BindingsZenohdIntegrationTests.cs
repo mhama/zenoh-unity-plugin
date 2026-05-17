@@ -96,7 +96,7 @@ namespace Zenoh.Tests
                         out ZOwnedEncoding putEncoding);
                     Assert.That(encodingResult.IsOk, Is.True, encodingResult.ToString());
 
-                    putOptions.MoveEncoding(putEncoding);
+                    putOptions.SetEncoding(putEncoding);
                     Assert.DoesNotThrow(() => putEncoding.Dispose());
 
                     ZResult putResult = loanedPublisher.Put(message, putOptions);

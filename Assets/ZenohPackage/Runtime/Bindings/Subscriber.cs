@@ -205,15 +205,15 @@ namespace Zenoh.Bindings
         public ZResult Declare(
             ZLoanedSession session,
             ZLoanedKeyExpr keyExpr,
-            ZOwnedClosureSample callback,
+            ZOwnedClosureSample movingCallback,
             ZSubscriberOptions options)
         {
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
             if (keyExpr == null)
                 throw new ArgumentNullException(nameof(keyExpr));
-            if (callback == null)
-                throw new ArgumentNullException(nameof(callback));
+            if (movingCallback == null)
+                throw new ArgumentNullException(nameof(movingCallback));
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
             ThrowIfDisposedOrMoved();
@@ -224,9 +224,9 @@ namespace Zenoh.Bindings
                     session.NativePointer,
                     nativePtr,
                     keyExpr.NativePointer,
-                    (z_moved_closure_sample_t*)callback.MoveToNative(),
+                    (z_moved_closure_sample_t*)movingCallback.MoveToNative(),
                     optionsPtr));
-                callback.Dispose();
+                movingCallback.Dispose();
                 return result;
             }
         }
