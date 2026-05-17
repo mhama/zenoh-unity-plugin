@@ -68,7 +68,7 @@ shape.
      broader access.
    - Store the native struct in `internal z_<X>_options_t Native;`.
    - If the native options struct contains `z_moved_*` fields, expose
-     `Move<FieldName>(ZOwned<FieldType> value)` methods to set them.
+     `Set<FieldName>(ZOwned<FieldType> moving<FieldName>)` methods to set them.
    - Options classes with `z_moved_*` fields must implement `IDisposable`
      because they adopt the moved wrappers' HGlobal storage.
    - Example:
@@ -78,9 +78,10 @@ shape.
    expose the operation as a method whose parameter is the owned wrapper type.
    - The method must call `MoveToNative()` and make later use of that owned
      wrapper throw `ObjectDisposedException`.
+   - Name consumed parameters with a `moving` prefix.
    - Example:
      - `z_publisher_put(..., z_moved_bytes_t*, ...)` =>
-       `ZLoanedPublisher.Put(ZOwnedBytes payload, ZPublisherPutOptions options)`
+       `ZLoanedPublisher.Put(ZOwnedBytes movingPayload, ZPublisherPutOptions options)`
 8. Native `*_drop` functions are not public Binding APIs.
    - They are used by `Dispose()`.
 9. Native `z_internal_*_null` functions are not public Binding APIs.
