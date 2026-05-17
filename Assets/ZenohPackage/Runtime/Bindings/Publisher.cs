@@ -42,6 +42,20 @@ namespace Zenoh.Bindings
             }
         }
 
+        /// <summary>
+        /// Convenience overload: clones the loaned encoding into a fresh owned value
+        /// and adopts it. Avoids a round-trip through <c>z_encoding_from_str</c> for
+        /// callers that already hold a borrowed encoding (e.g. ZEncodingConstants).
+        /// </summary>
+        public void SetEncoding(ZLoanedEncoding loanedEncoding)
+        {
+            if (loanedEncoding == null)
+                throw new ArgumentNullException(nameof(loanedEncoding));
+            ThrowIfDisposed();
+
+            SetEncoding(ZOwnedEncoding.CreateClone(loanedEncoding));
+        }
+
         internal void ThrowIfDisposed()
         {
             if (disposed)
@@ -111,6 +125,20 @@ namespace Zenoh.Bindings
             {
                 ptr->encoding = (z_moved_encoding_t*)adoptedEncoding.Pointer;
             }
+        }
+
+        /// <summary>
+        /// Convenience overload: clones the loaned encoding into a fresh owned value
+        /// and adopts it. Avoids a round-trip through <c>z_encoding_from_str</c> for
+        /// callers that already hold a borrowed encoding (e.g. ZEncodingConstants).
+        /// </summary>
+        public void SetEncoding(ZLoanedEncoding loanedEncoding)
+        {
+            if (loanedEncoding == null)
+                throw new ArgumentNullException(nameof(loanedEncoding));
+            ThrowIfDisposed();
+
+            SetEncoding(ZOwnedEncoding.CreateClone(loanedEncoding));
         }
 
         public void SetAttachment(ZOwnedBytes movingAttachment)
