@@ -4,7 +4,7 @@ using Zenoh.Plugins;
 
 namespace Zenoh.Bindings
 {
-    public unsafe sealed class ZOwnedBytes : IDisposable
+    public unsafe sealed partial class ZOwnedBytes : IDisposable
     {
         private z_owned_bytes_t* nativePtr;
         private bool disposed;

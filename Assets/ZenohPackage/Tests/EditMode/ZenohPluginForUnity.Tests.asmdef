@@ -2,7 +2,8 @@
     "name": "ZenohPluginForUnity.Tests",
     "rootNamespace": "",
     "references": [
-        "ZenohPluginForUnity"
+        "ZenohPluginForUnity",
+        "ZenohPluginForUnity.HighLevel"
     ],
     "includePlatforms": [
         "Editor"

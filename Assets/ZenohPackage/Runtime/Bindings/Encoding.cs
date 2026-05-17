@@ -54,6 +54,16 @@ namespace Zenoh.Bindings
             }
         }
 
+        public static ZOwnedEncoding CreateClone(ZLoanedEncoding source)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            ZOwnedEncoding value = new ZOwnedEncoding();
+            ZenohNative.z_encoding_clone(value.nativePtr, source.NativePointer);
+            return value;
+        }
+
         public ZLoanedEncoding Loan()
         {
             ThrowIfDisposedOrMoved();
