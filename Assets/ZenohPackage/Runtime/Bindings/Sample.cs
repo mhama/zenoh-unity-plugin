@@ -1,5 +1,5 @@
 using System;
-using System.Runtime.InteropServices;
+using Zenoh.Bindings.Internal;
 using Zenoh.Plugins;
 
 namespace Zenoh.Bindings
@@ -14,10 +14,11 @@ namespace Zenoh.Bindings
     {
         private z_owned_sample_t* nativePtr;
         private bool disposed;
+        private bool moved;
 
         public ZOwnedSample()
         {
-            nativePtr = (z_owned_sample_t*)Marshal.AllocHGlobal(sizeof(z_owned_sample_t));
+            nativePtr = NativeMemory.Alloc<z_owned_sample_t>();
             ZenohNative.z_internal_sample_null(nativePtr);
         }
 
@@ -35,7 +36,7 @@ namespace Zenoh.Bindings
 
         public bool Check()
         {
-            ThrowIfDisposed();
+            ThrowIfDisposedOrMoved();
             return ZenohNative.z_internal_sample_check(nativePtr);
         }
 
@@ -57,6 +58,17 @@ namespace Zenoh.Bindings
         private void ThrowIfDisposedOrMoved()
         {
             ThrowIfDisposed();
+            if (moved)
+                throw new ObjectDisposedException(nameof(ZOwnedSample));
+        }
+
+        internal OwnedStorage<z_owned_sample_t> Take()
+        {
+            ThrowIfDisposedOrMoved();
+            moved = true;
+            z_owned_sample_t* ptr = nativePtr;
+            nativePtr = null;
+            return new OwnedStorage<z_owned_sample_t>(ptr);
         }
 
         public void Dispose()
@@ -66,10 +78,10 @@ namespace Zenoh.Bindings
 
             if (nativePtr != null)
             {
-                if (ZenohNative.z_internal_sample_check(nativePtr))
+                if (!moved && ZenohNative.z_internal_sample_check(nativePtr))
                     ZenohNative.z_sample_drop((z_moved_sample_t*)nativePtr);
 
-                Marshal.FreeHGlobal((IntPtr)nativePtr);
+                NativeMemory.Free(nativePtr);
                 nativePtr = null;
             }
 

@@ -1,5 +1,5 @@
 using System;
-using System.Runtime.InteropServices;
+using Zenoh.Bindings.Internal;
 using Zenoh.Plugins;
 
 namespace Zenoh.Bindings
@@ -52,7 +52,7 @@ namespace Zenoh.Bindings
 
         private ZOwnedSession()
         {
-            nativePtr = (z_owned_session_t*)Marshal.AllocHGlobal(sizeof(z_owned_session_t));
+            nativePtr = NativeMemory.Alloc<z_owned_session_t>();
             ZenohNative.z_internal_session_null(nativePtr);
         }
 
@@ -63,18 +63,20 @@ namespace Zenoh.Bindings
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
 
-            session = new ZOwnedSession();
-            fixed (z_open_options_t* optionsPtr = &options.Native)
+            using (OwnedStorage<z_owned_config_t> configStorage = movingConfig.Take())
             {
-                ZResult result = new ZResult(ZenohNative.z_open(session.nativePtr, (z_moved_config_t*)movingConfig.MoveToNative(), optionsPtr));
-                movingConfig.Dispose();
-                if (!result.IsOk)
+                session = new ZOwnedSession();
+                fixed (z_open_options_t* optionsPtr = &options.Native)
                 {
-                    session.Dispose();
-                    session = null;
-                }
+                    ZResult result = new ZResult(ZenohNative.z_open(session.nativePtr, (z_moved_config_t*)configStorage.Pointer, optionsPtr));
+                    if (!result.IsOk)
+                    {
+                        session.Dispose();
+                        session = null;
+                    }
 
-                return result;
+                    return result;
+                }
             }
         }
 
@@ -96,11 +98,13 @@ namespace Zenoh.Bindings
             return ZenohNative.z_internal_session_check(nativePtr);
         }
 
-        internal z_owned_session_t* MoveToNative()
+        internal OwnedStorage<z_owned_session_t> Take()
         {
             ThrowIfDisposedOrMoved();
             moved = true;
-            return nativePtr;
+            z_owned_session_t* ptr = nativePtr;
+            nativePtr = null;
+            return new OwnedStorage<z_owned_session_t>(ptr);
         }
 
         private void ThrowIfDisposed()
@@ -126,7 +130,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_session_check(nativePtr))
                     ZenohNative.z_session_drop((z_moved_session_t*)nativePtr);
 
-                Marshal.FreeHGlobal((IntPtr)nativePtr);
+                NativeMemory.Free(nativePtr);
                 nativePtr = null;
             }
 

@@ -1,5 +1,5 @@
 using System;
-using System.Runtime.InteropServices;
+using Zenoh.Bindings.Internal;
 using Zenoh.Plugins;
 
 namespace Zenoh.Bindings
@@ -12,7 +12,7 @@ namespace Zenoh.Bindings
 
         private ZOwnedKeyExpr()
         {
-            nativePtr = (z_owned_keyexpr_t*)Marshal.AllocHGlobal(sizeof(z_owned_keyexpr_t));
+            nativePtr = NativeMemory.Alloc<z_owned_keyexpr_t>();
             ZenohNative.z_internal_keyexpr_null(nativePtr);
         }
 
@@ -66,11 +66,13 @@ namespace Zenoh.Bindings
             return ZenohNative.z_internal_keyexpr_check(nativePtr);
         }
 
-        internal z_owned_keyexpr_t* MoveToNative()
+        internal OwnedStorage<z_owned_keyexpr_t> Take()
         {
             ThrowIfDisposedOrMoved();
             moved = true;
-            return nativePtr;
+            z_owned_keyexpr_t* ptr = nativePtr;
+            nativePtr = null;
+            return new OwnedStorage<z_owned_keyexpr_t>(ptr);
         }
 
         private void ThrowIfDisposed()
@@ -96,7 +98,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_keyexpr_check(nativePtr))
                     ZenohNative.z_keyexpr_drop((z_moved_keyexpr_t*)nativePtr);
 
-                Marshal.FreeHGlobal((IntPtr)nativePtr);
+                NativeMemory.Free(nativePtr);
                 nativePtr = null;
             }
 

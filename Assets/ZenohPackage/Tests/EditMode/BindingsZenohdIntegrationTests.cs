@@ -71,13 +71,14 @@ namespace Zenoh.Tests
                     Assert.That(declareSubscriber.IsOk, Is.True, declareSubscriber.ToString());
                 }
 
-                ZPublisherOptions publisherOptions = ZPublisherOptions.Default();
-
-                ZResult declarePublisher = publisher.Declare(
-                    publisherSession.Loan(),
-                    publisherKeyExpr.Loan(),
-                    publisherOptions);
-                Assert.That(declarePublisher.IsOk, Is.True, declarePublisher.ToString());
+                using (ZPublisherOptions publisherOptions = ZPublisherOptions.Default())
+                {
+                    ZResult declarePublisher = publisher.Declare(
+                        publisherSession.Loan(),
+                        publisherKeyExpr.Loan(),
+                        publisherOptions);
+                    Assert.That(declarePublisher.IsOk, Is.True, declarePublisher.ToString());
+                }
 
                 ZLoanedPublisher loanedPublisher = publisher.Loan();
                 WaitForMatchingSubscriber(loanedPublisher);
@@ -88,19 +89,21 @@ namespace Zenoh.Tests
                     Assert.That(bytesResult.IsOk, Is.True, bytesResult.ToString());
                     Assert.That(message, Is.Not.Null);
 
-                    ZPublisherPutOptions putOptions = ZPublisherPutOptions.Default();
-                    byte[] encodingBytes = System.Text.Encoding.UTF8.GetBytes("text/plain");
-                    ZResult encodingResult = ZOwnedEncoding.TryCreateFromSubstr(
-                        encodingBytes,
-                        (nuint)encodingBytes.Length,
-                        out ZOwnedEncoding putEncoding);
-                    Assert.That(encodingResult.IsOk, Is.True, encodingResult.ToString());
+                    using (ZPublisherPutOptions putOptions = ZPublisherPutOptions.Default())
+                    {
+                        byte[] encodingBytes = System.Text.Encoding.UTF8.GetBytes("text/plain");
+                        ZResult encodingResult = ZOwnedEncoding.TryCreateFromSubstr(
+                            encodingBytes,
+                            (nuint)encodingBytes.Length,
+                            out ZOwnedEncoding putEncoding);
+                        Assert.That(encodingResult.IsOk, Is.True, encodingResult.ToString());
 
-                    putOptions.SetEncoding(putEncoding);
-                    Assert.DoesNotThrow(() => putEncoding.Dispose());
+                        putOptions.SetEncoding(putEncoding);
+                        Assert.DoesNotThrow(() => putEncoding.Dispose());
 
-                    ZResult putResult = loanedPublisher.Put(message, putOptions);
-                    Assert.That(putResult.IsOk, Is.True, putResult.ToString());
+                        ZResult putResult = loanedPublisher.Put(message, putOptions);
+                        Assert.That(putResult.IsOk, Is.True, putResult.ToString());
+                    }
                 }
 
                 Assert.That(received.Wait(2000), Is.True, "No sample received via local zenohd after a single publish.");

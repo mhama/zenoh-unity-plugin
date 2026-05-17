@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using AOT;
 using UnityEngine;
+using Zenoh.Bindings.Internal;
 using Zenoh.Plugins;
 
 namespace Zenoh.Bindings
@@ -41,7 +42,7 @@ namespace Zenoh.Bindings
 
         public ZOwnedClosureSample()
         {
-            nativePtr = (z_owned_closure_sample_t*)Marshal.AllocHGlobal(sizeof(z_owned_closure_sample_t));
+            nativePtr = NativeMemory.Alloc<z_owned_closure_sample_t>();
             ZenohNative.z_internal_closure_sample_null(nativePtr);
         }
 
@@ -76,11 +77,13 @@ namespace Zenoh.Bindings
             return ZenohNative.z_internal_closure_sample_check(nativePtr);
         }
 
-        internal z_owned_closure_sample_t* MoveToNative()
+        internal OwnedStorage<z_owned_closure_sample_t> Take()
         {
             ThrowIfDisposedOrMoved();
             moved = true;
-            return nativePtr;
+            z_owned_closure_sample_t* ptr = nativePtr;
+            nativePtr = null;
+            return new OwnedStorage<z_owned_closure_sample_t>(ptr);
         }
 
         [MonoPInvokeCallback(typeof(ZenohNative.z_closure_sample_call_delegate))]
@@ -143,7 +146,7 @@ namespace Zenoh.Bindings
                 else if (!moved && stateHandle.IsAllocated)
                     stateHandle.Free();
 
-                Marshal.FreeHGlobal((IntPtr)nativePtr);
+                NativeMemory.Free(nativePtr);
                 nativePtr = null;
             }
 
@@ -195,10 +198,11 @@ namespace Zenoh.Bindings
     {
         private z_owned_subscriber_t* nativePtr;
         private bool disposed;
+        private bool moved;
 
         public ZOwnedSubscriber()
         {
-            nativePtr = (z_owned_subscriber_t*)Marshal.AllocHGlobal(sizeof(z_owned_subscriber_t));
+            nativePtr = NativeMemory.Alloc<z_owned_subscriber_t>();
             ZenohNative.z_internal_subscriber_null(nativePtr);
         }
 
@@ -218,16 +222,17 @@ namespace Zenoh.Bindings
                 throw new ArgumentNullException(nameof(options));
             ThrowIfDisposedOrMoved();
 
-            fixed (z_subscriber_options_t* optionsPtr = &options.Native)
+            using (OwnedStorage<z_owned_closure_sample_t> callbackStorage = movingCallback.Take())
             {
-                ZResult result = new ZResult(ZenohNative.z_declare_subscriber(
-                    session.NativePointer,
-                    nativePtr,
-                    keyExpr.NativePointer,
-                    (z_moved_closure_sample_t*)movingCallback.MoveToNative(),
-                    optionsPtr));
-                movingCallback.Dispose();
-                return result;
+                fixed (z_subscriber_options_t* optionsPtr = &options.Native)
+                {
+                    return new ZResult(ZenohNative.z_declare_subscriber(
+                        session.NativePointer,
+                        nativePtr,
+                        keyExpr.NativePointer,
+                        (z_moved_closure_sample_t*)callbackStorage.Pointer,
+                        optionsPtr));
+                }
             }
         }
 
@@ -239,8 +244,17 @@ namespace Zenoh.Bindings
 
         public bool Check()
         {
-            ThrowIfDisposed();
+            ThrowIfDisposedOrMoved();
             return ZenohNative.z_internal_subscriber_check(nativePtr);
+        }
+
+        internal OwnedStorage<z_owned_subscriber_t> Take()
+        {
+            ThrowIfDisposedOrMoved();
+            moved = true;
+            z_owned_subscriber_t* ptr = nativePtr;
+            nativePtr = null;
+            return new OwnedStorage<z_owned_subscriber_t>(ptr);
         }
 
         private void ThrowIfDisposed()
@@ -252,6 +266,8 @@ namespace Zenoh.Bindings
         private void ThrowIfDisposedOrMoved()
         {
             ThrowIfDisposed();
+            if (moved)
+                throw new ObjectDisposedException(nameof(ZOwnedSubscriber));
         }
 
         public void Dispose()
@@ -261,10 +277,10 @@ namespace Zenoh.Bindings
 
             if (nativePtr != null)
             {
-                if (ZenohNative.z_internal_subscriber_check(nativePtr))
+                if (!moved && ZenohNative.z_internal_subscriber_check(nativePtr))
                     ZenohNative.z_subscriber_drop((z_moved_subscriber_t*)nativePtr);
 
-                Marshal.FreeHGlobal((IntPtr)nativePtr);
+                NativeMemory.Free(nativePtr);
                 nativePtr = null;
             }
 

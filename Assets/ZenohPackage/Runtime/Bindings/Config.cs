@@ -1,5 +1,5 @@
 using System;
-using System.Runtime.InteropServices;
+using Zenoh.Bindings.Internal;
 using Zenoh.Plugins;
 
 namespace Zenoh.Bindings
@@ -12,7 +12,7 @@ namespace Zenoh.Bindings
 
         private ZOwnedConfig()
         {
-            nativePtr = (z_owned_config_t*)Marshal.AllocHGlobal(sizeof(z_owned_config_t));
+            nativePtr = NativeMemory.Alloc<z_owned_config_t>();
             ZenohNative.z_internal_config_null(nativePtr);
         }
 
@@ -94,11 +94,13 @@ namespace Zenoh.Bindings
             return ZenohNative.z_internal_config_check(nativePtr);
         }
 
-        internal z_owned_config_t* MoveToNative()
+        internal OwnedStorage<z_owned_config_t> Take()
         {
             ThrowIfDisposedOrMoved();
             moved = true;
-            return nativePtr;
+            z_owned_config_t* ptr = nativePtr;
+            nativePtr = null;
+            return new OwnedStorage<z_owned_config_t>(ptr);
         }
 
         private static ZResult CompleteCreate(ZResult result, ref ZOwnedConfig value)
@@ -135,7 +137,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_config_check(nativePtr))
                     ZenohNative.z_config_drop((z_moved_config_t*)nativePtr);
 
-                Marshal.FreeHGlobal((IntPtr)nativePtr);
+                NativeMemory.Free(nativePtr);
                 nativePtr = null;
             }
 

@@ -1,5 +1,5 @@
 using System;
-using System.Runtime.InteropServices;
+using Zenoh.Bindings.Internal;
 using Zenoh.Plugins;
 
 namespace Zenoh.Bindings
@@ -12,7 +12,7 @@ namespace Zenoh.Bindings
 
         private ZOwnedEncoding()
         {
-            nativePtr = (z_owned_encoding_t*)Marshal.AllocHGlobal(sizeof(z_owned_encoding_t));
+            nativePtr = NativeMemory.Alloc<z_owned_encoding_t>();
             ZenohNative.z_internal_encoding_null(nativePtr);
         }
 
@@ -72,18 +72,13 @@ namespace Zenoh.Bindings
             return ZenohNative.z_internal_encoding_check(nativePtr);
         }
 
-        internal z_owned_encoding_t* MoveToNative()
+        internal OwnedStorage<z_owned_encoding_t> Take()
         {
             ThrowIfDisposedOrMoved();
             moved = true;
-            return nativePtr;
-        }
-
-        internal z_owned_encoding_t* MoveStorageToNative()
-        {
-            z_owned_encoding_t* ptr = MoveToNative();
+            z_owned_encoding_t* ptr = nativePtr;
             nativePtr = null;
-            return ptr;
+            return new OwnedStorage<z_owned_encoding_t>(ptr);
         }
 
         private void ThrowIfDisposed()
@@ -109,7 +104,7 @@ namespace Zenoh.Bindings
                 if (!moved && ZenohNative.z_internal_encoding_check(nativePtr))
                     ZenohNative.z_encoding_drop((z_moved_encoding_t*)nativePtr);
 
-                Marshal.FreeHGlobal((IntPtr)nativePtr);
+                NativeMemory.Free(nativePtr);
                 nativePtr = null;
             }
 
