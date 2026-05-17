@@ -156,6 +156,30 @@ namespace Zenoh.HighLevel
             }
         }
 
+        /// <summary>
+        /// Whether this publisher currently has any matching subscribers known to its session.
+        /// Useful for tests and warm-up — production code typically does not need to gate
+        /// publishes on this.
+        /// </summary>
+        public bool IsMatchingSubscribers
+        {
+            get
+            {
+                ThrowIfDisposed();
+                ZResult result = owned.Loan().TryGetMatchingStatus(out ZMatchingStatus status);
+                result.ThrowIfErr("Publisher.IsMatchingSubscribers failed");
+                return status.Matching;
+            }
+        }
+
+        public bool TryGetMatchingStatus(out bool matching, out ZResult result)
+        {
+            ThrowIfDisposed();
+            result = owned.Loan().TryGetMatchingStatus(out ZMatchingStatus status);
+            matching = result.IsOk && status.Matching;
+            return result.IsOk;
+        }
+
         private void ThrowIfDisposed()
         {
             if (owned == null)
