@@ -70,15 +70,25 @@ shape.
    - If the native options struct contains `z_moved_*` fields, expose
      `Set<FieldName>(ZOwned<FieldType> moving<FieldName>)` methods to set them.
    - Options classes with `z_moved_*` fields must implement `IDisposable`
-     because they adopt the moved wrappers' HGlobal storage.
+     because they adopt the moved wrappers' native storage.
+   - Options classes that adopt `OwnedStorage<T>` must not define finalizers.
+     `OwnedStorage<T>` has its own finalizer safety net, and finalizer ordering
+     is not reliable enough for options finalizers to call native drop safely.
    - Example:
      - `z_open_options_default(z_open_options_t*)` =>
        `ZOpenOptions.Default()`
 7. If the native function consumes an owned value through a `z_moved_*` pointer,
    expose the operation as a method whose parameter is the owned wrapper type.
-   - The method must call `MoveToNative()` and make later use of that owned
-     wrapper throw `ObjectDisposedException`.
-   - Name consumed parameters with a `moving` prefix.
+   - For function arguments, the binding method must call `Take()`, keep the
+     returned storage alive with `using` until the native call returns, and pass
+     `(z_moved_<type>_t*)storage.Pointer`.
+   - For options struct fields typed `z_moved_*`, the options setter must be
+     named `Set<FieldName>(ZOwned<FieldType> moving<FieldName>)`, call
+     `Take()`, store the returned `OwnedStorage<T>`, and write
+     `storage.Pointer` into the native field.
+   - Name all consumed parameters with a `moving` prefix.
+   - Later use of the source owned wrapper must throw
+     `ObjectDisposedException`.
    - Example:
      - `z_publisher_put(..., z_moved_bytes_t*, ...)` =>
        `ZLoanedPublisher.Put(ZOwnedBytes movingPayload, ZPublisherPutOptions options)`
@@ -129,27 +139,43 @@ Public constructors for owned wrappers should be avoided when the native type
 must be constructed by a specific native constructor. Use a private constructor
 for allocation plus `z_internal_*_null`.
 
+For owned wrappers (`ZOwned*`):
+
+- Allocate native storage with
+  `Zenoh.Bindings.Internal.NativeMemory.Alloc<T>()` in the constructor.
+- Initialize to gravestone state via `z_internal_<type>_null`.
+- Free storage with `Zenoh.Bindings.Internal.NativeMemory.Free(ptr)` in
+  `Dispose()` only when storage is still owned, meaning it has not been
+  `Take()`-d.
+
 ## Ownership and lifetime rules
 
 - `ZOwned*` owns native memory and implements `IDisposable`.
 - `ZLoaned*` does not own native memory and stores a reference to its owner to
   keep the owner alive for the loan's managed lifetime.
-- `MoveToNative()` is internal only.
-  - It marks the owned wrapper as moved.
-  - After moving, public operations on the wrapper must throw
-    `ObjectDisposedException`.
-  - For direct moved arguments, the caller must dispose the moved wrapper after
-    the native call returns so the wrapper's HGlobal is released early.
-- `MoveStorageToNative()` is internal only and is used for `z_moved_*` fields
-  inside options structs.
-  - It calls `MoveToNative()`, then detaches the source wrapper from its
-    HGlobal storage.
-  - The options wrapper adopts that storage and becomes responsible for
-    `z_X_drop()` plus `FreeHGlobal()`.
-  - After adoption, calling `Dispose()` on the source wrapper is a no-op for
-    storage; it must not free memory referenced by the options native field.
-- Methods that pass options containing adopted `z_moved_*` fields to native
-  must dispose those options immediately after the native call returns.
+- All native heap allocations and frees go through
+  `Zenoh.Bindings.Internal.NativeMemory`. Direct use of
+  `Marshal.AllocHGlobal` / `Marshal.FreeHGlobal` is prohibited outside this
+  utility.
+- Ownership of allocated storage is expressed by
+  `Zenoh.Bindings.Internal.OwnedStorage<T>`.
+- `Take()` is the single consume primitive on `ZOwned*` types.
+  - It moves both the native value and its storage ownership to the caller.
+  - It returns `OwnedStorage<T>` holding the native pointer.
+  - After `Take()`, the wrapper is fully inert: `moved = true`,
+    `nativePtr = null`, `Dispose()` becomes a no-op for storage, and all public
+    operations throw `ObjectDisposedException`.
+- `MoveToNative()` and `MoveStorageToNative()` are not Binding APIs. Use
+  `Take()` instead.
+- For direct `z_moved_*` function arguments, binding methods must keep the
+  returned storage alive with `using` until the native call returns.
+- For `z_moved_*` fields inside options structs, the options wrapper adopts the
+  returned `OwnedStorage<T>` and disposes it from the options `Dispose()`.
+- Binding methods must not automatically dispose options; options lifetime is
+  the caller's responsibility, typically via `using`.
+- Options wrappers that adopt `OwnedStorage<T>` must not have finalizers, to
+  avoid finalizer-order races between options native drop and
+  `OwnedStorage<T>` storage release.
 - Replacing an adopted options field must release the previously adopted
   storage before storing the new one.
 - `Dispose()` must be idempotent.
