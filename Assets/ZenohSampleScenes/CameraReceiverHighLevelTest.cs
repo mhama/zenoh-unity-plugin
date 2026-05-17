@@ -60,14 +60,17 @@ public class CameraReceiverHighLevelTest : MonoBehaviour
 
     void OnDestroy()
     {
+        // Derived resources first, then the session they depend on. Disposing the
+        // session ahead of the subscriber would leave us trying to drop a stopped
+        // native subscriber handle.
+        subscriber?.Dispose();
+        subscriber = null;
+
         if (initialized && session != null)
         {
             try { session.Close(); } catch (ZenohException) { }
             initialized = false;
         }
-
-        subscriber?.Dispose();
-        subscriber = null;
 
         session?.Dispose();
         session = null;

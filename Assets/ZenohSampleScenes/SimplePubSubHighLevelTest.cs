@@ -68,7 +68,10 @@ public class SimplePubSubHighLevelTest : MonoBehaviour
         {
             using (KeyExpr keyExpr = KeyExpr.Parse(keyExprString))
             {
-                publisher = Publisher.Declare(session, keyExpr);
+                publisher = Publisher.Declare(
+                    session,
+                    keyExpr,
+                    new PublisherDeclareOptions { DefaultEncoding = EncodingPreset.TextPlain });
             }
         }
         catch (ZenohException ex)
@@ -87,7 +90,7 @@ public class SimplePubSubHighLevelTest : MonoBehaviour
         {
             string message = $"[{idx:D4}] Unity Zenoh HighLevel Message";
             Debug.Log($"Putting Data ('{keyExprString}': '{message}')...");
-            publisher.Put(message, EncodingPreset.TextPlain);
+            publisher.Put(message);
         }
         catch (ZenohException ex)
         {

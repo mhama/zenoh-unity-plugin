@@ -1,6 +1,5 @@
 using System;
 using Zenoh.Bindings;
-using Zenoh.HighLevel.Internal;
 
 namespace Zenoh.HighLevel
 {
@@ -23,33 +22,31 @@ namespace Zenoh.HighLevel
 
     internal static class EncodingPresetExtensions
     {
-        public static string ToMimeString(this EncodingPreset preset)
+        /// <summary>
+        /// Returns the borrowed Zenoh-side encoding constant for this preset. This is
+        /// a zero-allocation lookup; the loaned encoding can be passed to Bindings
+        /// option setters that accept <see cref="ZLoanedEncoding"/> (which clone it
+        /// into the option's owned storage).
+        /// </summary>
+        public static ZLoanedEncoding ToLoanedEncoding(this EncodingPreset preset)
         {
             switch (preset)
             {
-                case EncodingPreset.ZenohBytes: return "zenoh/bytes";
-                case EncodingPreset.ZenohString: return "zenoh/string";
-                case EncodingPreset.ZenohSerialized: return "zenoh/serialized";
-                case EncodingPreset.ApplicationOctetStream: return "application/octet-stream";
-                case EncodingPreset.TextPlain: return "text/plain";
-                case EncodingPreset.ApplicationJson: return "application/json";
-                case EncodingPreset.TextJson: return "text/json";
-                case EncodingPreset.TextJson5: return "text/json5";
-                case EncodingPreset.ImagePng: return "image/png";
-                case EncodingPreset.ImageJpeg: return "image/jpeg";
-                case EncodingPreset.ImageGif: return "image/gif";
-                case EncodingPreset.ImageBmp: return "image/bmp";
-                case EncodingPreset.ImageWebp: return "image/webp";
+                case EncodingPreset.ZenohBytes: return ZEncodingConstants.ZenohBytes();
+                case EncodingPreset.ZenohString: return ZEncodingConstants.ZenohString();
+                case EncodingPreset.ZenohSerialized: return ZEncodingConstants.ZenohSerialized();
+                case EncodingPreset.ApplicationOctetStream: return ZEncodingConstants.ApplicationOctetStream();
+                case EncodingPreset.TextPlain: return ZEncodingConstants.TextPlain();
+                case EncodingPreset.ApplicationJson: return ZEncodingConstants.ApplicationJson();
+                case EncodingPreset.TextJson: return ZEncodingConstants.TextJson();
+                case EncodingPreset.TextJson5: return ZEncodingConstants.TextJson5();
+                case EncodingPreset.ImagePng: return ZEncodingConstants.ImagePng();
+                case EncodingPreset.ImageJpeg: return ZEncodingConstants.ImageJpeg();
+                case EncodingPreset.ImageGif: return ZEncodingConstants.ImageGif();
+                case EncodingPreset.ImageBmp: return ZEncodingConstants.ImageBmp();
+                case EncodingPreset.ImageWebp: return ZEncodingConstants.ImageWebp();
                 default: throw new ArgumentOutOfRangeException(nameof(preset), preset, null);
             }
-        }
-
-        public static ZOwnedEncoding ToOwnedEncoding(this EncodingPreset preset)
-        {
-            byte[] buffer = Utf8Helper.EncodeNullTerminated(preset.ToMimeString());
-            ZResult result = ZOwnedEncoding.TryCreateFromStr(buffer, out ZOwnedEncoding owned);
-            result.ThrowIfErr($"Failed to build encoding for preset {preset}");
-            return owned;
         }
     }
 }

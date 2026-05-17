@@ -29,7 +29,7 @@ namespace Zenoh.HighLevel
             try
             {
                 if (options?.DefaultEncoding is EncodingPreset preset)
-                    nativeOptions.SetEncoding(preset.ToOwnedEncoding());
+                    nativeOptions.SetEncoding(preset.ToLoanedEncoding());
 
                 ZOwnedPublisher owned = new ZOwnedPublisher();
                 try
@@ -61,7 +61,7 @@ namespace Zenoh.HighLevel
             try
             {
                 if (options?.DefaultEncoding is EncodingPreset preset)
-                    nativeOptions.SetEncoding(preset.ToOwnedEncoding());
+                    nativeOptions.SetEncoding(preset.ToLoanedEncoding());
 
                 ZOwnedPublisher owned = new ZOwnedPublisher();
                 result = owned.Declare(session.LoanInternal(), keyExpr.LoanInternal(), nativeOptions);
@@ -126,7 +126,7 @@ namespace Zenoh.HighLevel
             try
             {
                 if (encoding.HasValue)
-                    options.SetEncoding(encoding.Value.ToOwnedEncoding());
+                    options.SetEncoding(encoding.Value.ToLoanedEncoding());
 
                 ZResult result = owned.Loan().Put(movingPayload, options);
                 result.ThrowIfErr("Publisher.Put failed");
@@ -145,7 +145,7 @@ namespace Zenoh.HighLevel
             try
             {
                 if (encoding.HasValue)
-                    options.SetEncoding(encoding.Value.ToOwnedEncoding());
+                    options.SetEncoding(encoding.Value.ToLoanedEncoding());
 
                 result = owned.Loan().Put(movingPayload, options);
                 return result.IsOk;
