@@ -170,5 +170,71 @@ namespace Zenoh.Bindings
         {
             return ZenohNative.z_session_is_closed(NativePointer);
         }
+
+        /// <summary>
+        /// Issues a query toward the matching queryables. Replies are delivered through
+        /// <paramref name="movingCallback"/>, which is moved into the query.
+        /// </summary>
+        /// <param name="parametersUtf8">Null-terminated UTF-8 parameters selector, or
+        /// <c>null</c> for no parameters.</param>
+        public ZResult Get(
+            ZLoanedKeyExpr keyExpr,
+            byte[] parametersUtf8,
+            ZOwnedClosureReply movingCallback,
+            ZGetOptions options)
+        {
+            if (keyExpr == null)
+                throw new ArgumentNullException(nameof(keyExpr));
+            if (movingCallback == null)
+                throw new ArgumentNullException(nameof(movingCallback));
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+            options.ThrowIfDisposed();
+
+            using (OwnedStorage<z_owned_closure_reply_t> callbackStorage = movingCallback.Take())
+            {
+                fixed (byte* parametersPtr = parametersUtf8)
+                fixed (z_get_options_t* optionsPtr = &options.Native)
+                {
+                    return new ZResult(ZenohNative.z_get(
+                        NativePointer,
+                        keyExpr.NativePointer,
+                        parametersPtr,
+                        (z_moved_closure_reply_t*)callbackStorage.Pointer,
+                        optionsPtr));
+                }
+            }
+        }
+
+        public ZResult GetWithParametersSubstr(
+            ZLoanedKeyExpr keyExpr,
+            byte[] parametersUtf8,
+            nuint parametersLen,
+            ZOwnedClosureReply movingCallback,
+            ZGetOptions options)
+        {
+            if (keyExpr == null)
+                throw new ArgumentNullException(nameof(keyExpr));
+            if (movingCallback == null)
+                throw new ArgumentNullException(nameof(movingCallback));
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+            options.ThrowIfDisposed();
+
+            using (OwnedStorage<z_owned_closure_reply_t> callbackStorage = movingCallback.Take())
+            {
+                fixed (byte* parametersPtr = parametersUtf8)
+                fixed (z_get_options_t* optionsPtr = &options.Native)
+                {
+                    return new ZResult(ZenohNative.z_get_with_parameters_substr(
+                        NativePointer,
+                        keyExpr.NativePointer,
+                        parametersPtr,
+                        parametersLen,
+                        (z_moved_closure_reply_t*)callbackStorage.Pointer,
+                        optionsPtr));
+                }
+            }
+        }
     }
 }

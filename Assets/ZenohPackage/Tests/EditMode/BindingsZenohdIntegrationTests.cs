@@ -114,6 +114,154 @@ namespace Zenoh.Tests
             }
         }
 
+        [Test]
+        public void GetQueryable_RoundTripsReply()
+        {
+            byte[] keyExprBytes = System.Text.Encoding.UTF8.GetBytes("unity/test/bindings/getqueryable");
+            byte[] replyPayload = System.Text.Encoding.UTF8.GetBytes("pong");
+            byte[] queryPayload = System.Text.Encoding.UTF8.GetBytes("ping");
+
+            ZResult queryableKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(
+                keyExprBytes,
+                (nuint)keyExprBytes.Length,
+                out ZOwnedKeyExpr queryableKey);
+            Assert.That(queryableKeyResult.IsOk, Is.True, queryableKeyResult.ToString());
+
+            ZResult getKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(
+                keyExprBytes,
+                (nuint)keyExprBytes.Length,
+                out ZOwnedKeyExpr getKey);
+            Assert.That(getKeyResult.IsOk, Is.True, getKeyResult.ToString());
+
+            using (ZOwnedSession queryableSession = OpenLocalhostZenohdSession())
+            using (ZOwnedSession querierSession = OpenLocalhostZenohdSession())
+            using (queryableKey)
+            using (getKey)
+            using (ZOwnedQueryable queryable = new ZOwnedQueryable())
+            using (ManualResetEventSlim replyReceived = new ManualResetEventSlim(false))
+            {
+                Exception queryableCallbackError = null;
+                int observedQueryPayloadLength = -1;
+                byte[] observedQueryParameters = null;
+
+                int replyPayloadLength = -1;
+                bool replyWasOk = false;
+
+                using (ZOwnedClosureQuery queryableCallback = new ZOwnedClosureQuery())
+                {
+                    queryableCallback.Set((query, context) =>
+                    {
+                        try
+                        {
+                            ZLoanedBytes payload = query.Payload();
+                            observedQueryPayloadLength = payload == null ? -1 : checked((int)payload.Len());
+                            observedQueryParameters = query.Parameters();
+
+                            ZResult bytesResult = ZOwnedBytes.TryCreateCopyFromBuf(
+                                replyPayload,
+                                (nuint)replyPayload.Length,
+                                out ZOwnedBytes payloadOut);
+                            if (!bytesResult.IsOk)
+                            {
+                                payloadOut?.Dispose();
+                                queryableCallbackError = new InvalidOperationException("reply payload create failed: " + bytesResult);
+                                return;
+                            }
+
+                            using (payloadOut)
+                            using (ZQueryReplyOptions replyOptions = ZQueryReplyOptions.Default())
+                            {
+                                ZResult replyResult = query.Reply(query.KeyExpr(), payloadOut, replyOptions);
+                                if (!replyResult.IsOk)
+                                {
+                                    queryableCallbackError = new InvalidOperationException("z_query_reply failed: " + replyResult);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            queryableCallbackError = ex;
+                        }
+                    }, null, IntPtr.Zero);
+
+                    ZQueryableOptions queryableOptions = ZQueryableOptions.Default();
+                    queryableOptions.SetComplete(true);
+
+                    ZResult declareResult = queryable.Declare(
+                        queryableSession.Loan(),
+                        queryableKey.Loan(),
+                        queryableCallback,
+                        queryableOptions);
+                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                }
+
+                WaitForSessionDiscovery();
+
+                using (ZOwnedClosureReply replyCallback = new ZOwnedClosureReply())
+                {
+                    replyCallback.Set((reply, context) =>
+                    {
+                        try
+                        {
+                            replyWasOk = reply.IsOk();
+                            if (replyWasOk)
+                            {
+                                ZLoanedSample sample = reply.Ok();
+                                if (sample != null)
+                                    replyPayloadLength = checked((int)sample.Payload().Len());
+                            }
+                        }
+                        finally
+                        {
+                            replyReceived.Set();
+                        }
+                    }, null, IntPtr.Zero);
+
+                    ZResult queryPayloadResult = ZOwnedBytes.TryCreateCopyFromBuf(
+                        queryPayload,
+                        (nuint)queryPayload.Length,
+                        out ZOwnedBytes queryPayloadBytes);
+                    Assert.That(queryPayloadResult.IsOk, Is.True, queryPayloadResult.ToString());
+
+                    using (queryPayloadBytes)
+                    using (ZGetOptions getOptions = ZGetOptions.Default())
+                    {
+                        getOptions.SetTarget(ZQueryTarget.All);
+                        getOptions.SetConsolidation(ZQueryConsolidation.None());
+                        getOptions.SetTimeoutMs(5000);
+                        getOptions.SetPayload(queryPayloadBytes);
+
+                        ZResult getResult = querierSession.Loan().Get(
+                            getKey.Loan(),
+                            NullTerminatedUtf8(string.Empty),
+                            replyCallback,
+                            getOptions);
+                        Assert.That(getResult.IsOk, Is.True, getResult.ToString());
+                    }
+                }
+
+                Assert.That(replyReceived.Wait(5000), Is.True, "No reply received via local zenohd.");
+                Assert.That(queryableCallbackError, Is.Null, queryableCallbackError?.ToString());
+                Assert.That(observedQueryPayloadLength, Is.EqualTo(queryPayload.Length));
+                Assert.That(observedQueryParameters, Is.Not.Null);
+                Assert.That(observedQueryParameters.Length, Is.EqualTo(0));
+                Assert.That(replyWasOk, Is.True);
+                Assert.That(replyPayloadLength, Is.EqualTo(replyPayload.Length));
+
+                CloseSession(queryableSession);
+                CloseSession(querierSession);
+            }
+        }
+
+        private static void WaitForSessionDiscovery()
+        {
+            // Allow a brief moment for the queryable declaration to propagate through
+            // the router before the querier issues z_get. zenohd routes queries by
+            // intersection of declared key expressions, so a tiny grace period is
+            // sufficient in practice for an in-process router on loopback.
+            Thread.Sleep(200);
+        }
+
         private static void WaitForMatchingSubscriber(ZLoanedPublisher publisher)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
