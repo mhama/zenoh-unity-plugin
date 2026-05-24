@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using Zenoh.Bindings.Internal;
 using Zenoh.Plugins;
 
@@ -157,6 +158,23 @@ namespace Zenoh.Bindings
         public nuint Len()
         {
             return ZenohNative.z_bytes_len(NativePointer);
+        }
+
+        public byte[] CopyToByteArray()
+        {
+            z_owned_slice_t slice = new z_owned_slice_t();
+            ZenohNative.z_bytes_to_slice(NativePointer, &slice);
+
+            z_loaned_slice_t* loanedSlice = ZenohNative.z_slice_loan(&slice);
+            byte* data = ZenohNative.z_slice_data(loanedSlice);
+            long len = (long)ZenohNative.z_slice_len(loanedSlice);
+
+            byte[] result = new byte[len];
+            if (len > 0)
+                Marshal.Copy((IntPtr)data, result, 0, (int)len);
+
+            ZenohNative.z_slice_drop((z_moved_slice_t*)&slice);
+            return result;
         }
     }
 }
