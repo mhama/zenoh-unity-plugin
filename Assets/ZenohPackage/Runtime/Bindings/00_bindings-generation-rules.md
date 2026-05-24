@@ -23,6 +23,42 @@ shape.
 - `ZenohNative.*` function names may remain inside method bodies, but public
   Binding method names must not expose raw `z_*`, `zc_*`, or `ze_*` names.
 
+## File organization
+
+- Files directly under `Bindings/` are the mechanical projection of
+  `ZenohNative.g.cs` and must follow the rules in this document. A reviewer
+  should be able to predict the file's contents from the corresponding native
+  declarations alone.
+- One file per native concept. Group everything that pertains to a single
+  native concept (e.g. owned + loaned wrapper, its options structs, redeclared
+  enums, receiver-less helper classes) into the same file. Examples:
+  - `Query.cs` holds `ZOwnedQuery`, `ZLoanedQuery`, the three
+    `ZQueryReply*Options`, and the `ZReplyKeyExpr` enum.
+  - `Get.cs` holds `ZGetOptions`, `ZQueryConsolidation`, and the
+    `ZQueryTarget` / `ZConsolidationMode` enums.
+  - Cross-concept methods belong to the receiver's file. `z_get` is an
+    operation on `z_loaned_session_t`, so the `ZLoanedSession.Get(...)`
+    instance method lives in `Session.cs`, not in `Get.cs`.
+- Do not split a single class with `partial` to separate concepts that already
+  live within the mechanical layer. `partial` is reserved for separating the
+  mechanical layer from `Handwritten/` (see below).
+- `Bindings/Handwritten/` contains hand-written, non-mechanical bindings that
+  do not derive from a one-to-one mapping of native declarations. These files
+  must be reviewed independently from the mechanical layer and must call out
+  the non-mechanical lifetime contract in a file-level comment.
+  - Use `partial` on the mechanical class in `Bindings/` plus a matching
+    `partial` in `Handwritten/` to attach handwritten members without
+    cluttering the mechanical file.
+  - Current example: `Handwritten/Bytes.Pinned.cs` extends `ZOwnedBytes` with
+    `TryCreateFromManagedBuf`, which pins a managed `byte[]` via `GCHandle`
+    and hands the raw pointer to `z_bytes_from_buf` with a managed-side
+    deleter. The lifetime contract (pin until native drop, AOT-safe deleter
+    delegate) is fundamentally different from the mechanical
+    Owned/Loaned/Take scaffolding in `Bytes.cs`.
+- Tests for both layers live in
+  `Assets/ZenohPackage/Tests/EditMode/Bindings*Tests.cs` and are not subject
+  to these rules.
+
 ## Mechanical naming rules
 
 1. Drop the native prefix `z_`, `zc_`, or `ze_`.
@@ -61,6 +97,12 @@ shape.
      - `is_empty` => `IsEmpty()`
    - Keep common native abbreviations when they are part of the native API:
      - `len` => `Len()`
+   - For native functions that write into a `z_view_string_t*` output
+     parameter, return a managed `string`. Stack-allocate the
+     `z_view_string_t`, call the native function, then convert via
+     `z_view_string_loan` → `z_string_data` / `z_string_len` →
+     `Encoding.UTF8.GetString`. The view does not own memory and needs no
+     disposal.
    - Examples:
      - `z_bytes_len(z_loaned_bytes_t*)` => `ZLoanedBytes.Len()`
      - `z_sample_payload(z_loaned_sample_t*)` => `ZLoanedSample.Payload()`
@@ -74,6 +116,11 @@ shape.
    - Store the native struct in `internal z_<X>_options_t Native;`.
    - If the native options struct contains `z_moved_*` fields, expose
      `Set<FieldName>(ZOwned<FieldType> moving<FieldName>)` methods to set them.
+   - If the native options struct contains non-moved pointer fields (e.g.
+     `z_timestamp_t*`, `z_source_info_t*`), expose
+     `Set<FieldName>(ZLoaned<FieldType> <fieldName>)` methods that copy
+     `NativePointer` into the native field. The caller is responsible for
+     keeping the pointed-to data alive until the native call completes.
    - Options classes with `z_moved_*` fields must implement `IDisposable`
      because they adopt the moved wrappers' native storage.
    - Options classes that adopt `OwnedStorage<T>` must not define finalizers.
@@ -108,7 +155,8 @@ shape.
     - Constant loan getters go in `Z<Concept>Constants`.
     - Utility functions go in `Z<Concept>Utils`.
 11. Native enums are internal in `Zenoh.Plugins`. If a public Binding method
-    returns a native enum concept, redeclare it as a public Binding enum.
+    uses a native enum concept in its signature (parameter or return type),
+    redeclare it as a public Binding enum.
 12. Native APIs that return direct `z_<type>_t*` pointers, such as timestamp or
     source_info accessors, must still be wrapped before public exposure.
     - Use `ZLoaned<Type>` naming when the returned pointer is borrowed from the
@@ -211,3 +259,39 @@ For owned wrappers (`ZOwned*`):
 - Manually disposing an owned wrapper invalidates outstanding loans. The owner
   reference only prevents managed GC collection; it cannot prevent native
   use-after-free after explicit `Dispose()`.
+
+## Testing
+
+Every binding change must come with tests. The mechanical conversion is
+small, but the boundary between managed lifetime and native lifetime is
+where bugs hide, so reviewers should be able to point at a test for any
+public Binding API. New PRs without tests will be sent back.
+
+Required coverage:
+
+- Each public `ZOwned*` factory (`Create*`, `TryCreate*`) gets at least one
+  unit test asserting `IsOk` (or the documented failure mode) plus a
+  successful `Loan()` / `Check()` call on the produced wrapper.
+- Each options class gets at least one unit test exercising every `Set*`
+  method that adopts a moved field, asserting that the source `ZOwned*`
+  becomes inert (`ObjectDisposedException` from `Check()` / `Loan()`) and
+  that a subsequent explicit `Dispose()` on the source does not throw.
+- Owned wrappers with native operations that change observable state
+  (e.g. `Reply`, `Get`, `Put`, `Declare`) need a round-trip integration
+  test under `Tests/EditMode/Bindings*ZenohdIntegrationTests.cs` that runs
+  against a local `zenohd`, mirroring the existing pub/sub fixture.
+- Re-declared public enums and small value wrappers (e.g.
+  `ZQueryConsolidation`) need a unit test verifying that the binding-side
+  factories agree with the native ones on every supported variant.
+
+Unit-style tests go in
+`Assets/ZenohPackage/Tests/EditMode/BindingsBasicTests.cs`. Integration
+tests that require a router go in
+`Assets/ZenohPackage/Tests/EditMode/BindingsZenohdIntegrationTests.cs`
+under the `ZenohIntegration` NUnit category, so they can be filtered when
+no `zenohd` is available.
+
+Tests in `Handwritten/`'s scope (non-mechanical bindings) carry the same
+testing requirement; the lifetime contract is precisely what makes those
+files non-mechanical, and an unverified lifetime contract is a latent
+use-after-free.
