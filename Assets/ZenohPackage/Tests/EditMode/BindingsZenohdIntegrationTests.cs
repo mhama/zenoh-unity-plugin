@@ -169,6 +169,386 @@ namespace Zenoh.Tests
             return result;
         }
 
+        [Test]
+        public void QueryReply_RoundTripsPayload()
+        {
+            byte[] keyExprBytes = System.Text.Encoding.UTF8.GetBytes("unity/test/bindings/queryreply");
+            byte[] replyPayload = System.Text.Encoding.UTF8.GetBytes("reply-payload");
+
+            using (ZOwnedSession queryableSession = OpenLocalhostZenohdSession())
+            using (ZOwnedSession getterSession = OpenLocalhostZenohdSession())
+            using (ZOwnedQueryable queryable = new ZOwnedQueryable())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                ZResult qKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr qKey);
+                Assert.That(qKeyResult.IsOk, Is.True, qKeyResult.ToString());
+
+                using (ZOwnedClosureQuery closureQuery = new ZOwnedClosureQuery())
+                using (qKey)
+                {
+                    closureQuery.Set((query, context) =>
+                    {
+                        ZResult payloadResult = ZOwnedBytes.TryCreateCopyFromBuf(replyPayload, (nuint)replyPayload.Length, out ZOwnedBytes payload);
+                        if (!payloadResult.IsOk) return;
+
+                        using (ZQueryReplyOptions opts = ZQueryReplyOptions.Default())
+                        {
+                            query.Reply(query.KeyExpr(), payload, opts);
+                        }
+                    }, null, IntPtr.Zero);
+
+                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
+                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                }
+
+                Thread.Sleep(200);
+
+                bool replyIsOk = false;
+                int replyPayloadLen = -1;
+
+                ZResult gKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr gKey);
+                Assert.That(gKeyResult.IsOk, Is.True, gKeyResult.ToString());
+
+                using (ZOwnedClosureReply closureReply = new ZOwnedClosureReply())
+                using (gKey)
+                {
+                    closureReply.Set((reply, context) =>
+                    {
+                        replyIsOk = reply.IsOk();
+                        if (replyIsOk)
+                        {
+                            ZLoanedSample sample = reply.Ok();
+                            if (sample != null)
+                                replyPayloadLen = checked((int)sample.Payload().Len());
+                        }
+                        received.Set();
+                    }, null, IntPtr.Zero);
+
+                    using (ZGetOptions getOpts = ZGetOptions.Default())
+                    {
+                        byte[] parameters = NullTerminatedUtf8("");
+                        ZResult getResult = getterSession.Loan().Get(gKey.Loan(), parameters, closureReply, getOpts);
+                        Assert.That(getResult.IsOk, Is.True, getResult.ToString());
+                    }
+                }
+
+                Assert.That(received.Wait(5000), Is.True, "No reply received within 5 seconds.");
+                Assert.That(replyIsOk, Is.True);
+                Assert.That(replyPayloadLen, Is.EqualTo(replyPayload.Length));
+
+                CloseSession(queryableSession);
+                CloseSession(getterSession);
+            }
+        }
+
+        [Test]
+        public void QueryReplyErr_RoundTripsError()
+        {
+            byte[] keyExprBytes = System.Text.Encoding.UTF8.GetBytes("unity/test/bindings/queryreplyerr");
+            byte[] errPayload = System.Text.Encoding.UTF8.GetBytes("error-info");
+
+            using (ZOwnedSession queryableSession = OpenLocalhostZenohdSession())
+            using (ZOwnedSession getterSession = OpenLocalhostZenohdSession())
+            using (ZOwnedQueryable queryable = new ZOwnedQueryable())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                ZResult qKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr qKey);
+                Assert.That(qKeyResult.IsOk, Is.True, qKeyResult.ToString());
+
+                using (ZOwnedClosureQuery closureQuery = new ZOwnedClosureQuery())
+                using (qKey)
+                {
+                    closureQuery.Set((query, context) =>
+                    {
+                        ZResult payloadResult = ZOwnedBytes.TryCreateCopyFromBuf(errPayload, (nuint)errPayload.Length, out ZOwnedBytes payload);
+                        if (!payloadResult.IsOk) return;
+
+                        using (ZQueryReplyErrOptions opts = ZQueryReplyErrOptions.Default())
+                        {
+                            query.ReplyErr(payload, opts);
+                        }
+                    }, null, IntPtr.Zero);
+
+                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
+                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                }
+
+                Thread.Sleep(200);
+
+                bool replyIsOk = true;
+                int errPayloadLen = -1;
+
+                ZResult gKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr gKey);
+                Assert.That(gKeyResult.IsOk, Is.True, gKeyResult.ToString());
+
+                using (ZOwnedClosureReply closureReply = new ZOwnedClosureReply())
+                using (gKey)
+                {
+                    closureReply.Set((reply, context) =>
+                    {
+                        replyIsOk = reply.IsOk();
+                        if (!replyIsOk)
+                        {
+                            ZLoanedReplyErr err = reply.Err();
+                            if (err != null)
+                                errPayloadLen = checked((int)err.Payload().Len());
+                        }
+                        received.Set();
+                    }, null, IntPtr.Zero);
+
+                    using (ZGetOptions getOpts = ZGetOptions.Default())
+                    {
+                        byte[] parameters = NullTerminatedUtf8("");
+                        ZResult getResult = getterSession.Loan().Get(gKey.Loan(), parameters, closureReply, getOpts);
+                        Assert.That(getResult.IsOk, Is.True, getResult.ToString());
+                    }
+                }
+
+                Assert.That(received.Wait(5000), Is.True, "No reply received within 5 seconds.");
+                Assert.That(replyIsOk, Is.False);
+                Assert.That(errPayloadLen, Is.EqualTo(errPayload.Length));
+
+                CloseSession(queryableSession);
+                CloseSession(getterSession);
+            }
+        }
+
+        [Test]
+        public void QueryReplyDel_RoundTripsDeleteSample()
+        {
+            byte[] keyExprBytes = System.Text.Encoding.UTF8.GetBytes("unity/test/bindings/queryreplydel");
+
+            using (ZOwnedSession queryableSession = OpenLocalhostZenohdSession())
+            using (ZOwnedSession getterSession = OpenLocalhostZenohdSession())
+            using (ZOwnedQueryable queryable = new ZOwnedQueryable())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                ZResult qKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr qKey);
+                Assert.That(qKeyResult.IsOk, Is.True, qKeyResult.ToString());
+
+                using (ZOwnedClosureQuery closureQuery = new ZOwnedClosureQuery())
+                using (qKey)
+                {
+                    closureQuery.Set((query, context) =>
+                    {
+                        using (ZQueryReplyDelOptions opts = ZQueryReplyDelOptions.Default())
+                        {
+                            query.ReplyDel(query.KeyExpr(), opts);
+                        }
+                    }, null, IntPtr.Zero);
+
+                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
+                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                }
+
+                Thread.Sleep(200);
+
+                bool replyIsOk = false;
+                ZSampleKind sampleKind = ZSampleKind.Put;
+
+                ZResult gKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr gKey);
+                Assert.That(gKeyResult.IsOk, Is.True, gKeyResult.ToString());
+
+                using (ZOwnedClosureReply closureReply = new ZOwnedClosureReply())
+                using (gKey)
+                {
+                    closureReply.Set((reply, context) =>
+                    {
+                        replyIsOk = reply.IsOk();
+                        if (replyIsOk)
+                        {
+                            ZLoanedSample sample = reply.Ok();
+                            if (sample != null)
+                                sampleKind = sample.Kind();
+                        }
+                        received.Set();
+                    }, null, IntPtr.Zero);
+
+                    using (ZGetOptions getOpts = ZGetOptions.Default())
+                    {
+                        byte[] parameters = NullTerminatedUtf8("");
+                        ZResult getResult = getterSession.Loan().Get(gKey.Loan(), parameters, closureReply, getOpts);
+                        Assert.That(getResult.IsOk, Is.True, getResult.ToString());
+                    }
+                }
+
+                Assert.That(received.Wait(5000), Is.True, "No reply received within 5 seconds.");
+                Assert.That(replyIsOk, Is.True);
+                Assert.That(sampleKind, Is.EqualTo(ZSampleKind.Delete));
+
+                CloseSession(queryableSession);
+                CloseSession(getterSession);
+            }
+        }
+
+        [Test]
+        public void QueryFields_MatchGetParameters()
+        {
+            byte[] keyExprBytes = System.Text.Encoding.UTF8.GetBytes("unity/test/bindings/queryfields");
+            byte[] queryPayload = System.Text.Encoding.UTF8.GetBytes("query-body");
+            byte[] attachmentPayload = System.Text.Encoding.UTF8.GetBytes("attach");
+            string parametersStr = "a=1&b=2";
+
+            using (ZOwnedSession queryableSession = OpenLocalhostZenohdSession())
+            using (ZOwnedSession getterSession = OpenLocalhostZenohdSession())
+            using (ZOwnedQueryable queryable = new ZOwnedQueryable())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                string receivedParameters = null;
+                int receivedPayloadLen = -1;
+                int receivedAttachmentLen = -1;
+
+                ZResult qKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr qKey);
+                Assert.That(qKeyResult.IsOk, Is.True, qKeyResult.ToString());
+
+                using (ZOwnedClosureQuery closureQuery = new ZOwnedClosureQuery())
+                using (qKey)
+                {
+                    closureQuery.Set((query, context) =>
+                    {
+                        receivedParameters = query.Parameters();
+
+                        ZLoanedBytes payload = query.Payload();
+                        if (payload != null)
+                            receivedPayloadLen = checked((int)payload.Len());
+
+                        ZLoanedBytes attachment = query.Attachment();
+                        if (attachment != null)
+                            receivedAttachmentLen = checked((int)attachment.Len());
+
+                        byte[] replyBytes = System.Text.Encoding.UTF8.GetBytes("ok");
+                        ZResult r = ZOwnedBytes.TryCreateCopyFromBuf(replyBytes, (nuint)replyBytes.Length, out ZOwnedBytes replyPayload);
+                        if (r.IsOk)
+                        {
+                            using (ZQueryReplyOptions opts = ZQueryReplyOptions.Default())
+                            {
+                                query.Reply(query.KeyExpr(), replyPayload, opts);
+                            }
+                        }
+
+                        received.Set();
+                    }, null, IntPtr.Zero);
+
+                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
+                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                }
+
+                Thread.Sleep(200);
+
+                ZResult gKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr gKey);
+                Assert.That(gKeyResult.IsOk, Is.True, gKeyResult.ToString());
+
+                ZResult payloadBytesResult = ZOwnedBytes.TryCreateCopyFromBuf(queryPayload, (nuint)queryPayload.Length, out ZOwnedBytes payloadBytes);
+                Assert.That(payloadBytesResult.IsOk, Is.True, payloadBytesResult.ToString());
+
+                ZResult attachmentBytesResult = ZOwnedBytes.TryCreateCopyFromBuf(attachmentPayload, (nuint)attachmentPayload.Length, out ZOwnedBytes attachmentBytes);
+                Assert.That(attachmentBytesResult.IsOk, Is.True, attachmentBytesResult.ToString());
+
+                using (ZOwnedClosureReply closureReply = new ZOwnedClosureReply())
+                using (gKey)
+                using (payloadBytes)
+                using (attachmentBytes)
+                {
+                    closureReply.Set((reply, context) => { }, null, IntPtr.Zero);
+
+                    using (ZGetOptions getOpts = ZGetOptions.Default())
+                    {
+                        getOpts.SetPayload(payloadBytes);
+                        getOpts.SetAttachment(attachmentBytes);
+
+                        byte[] parameters = NullTerminatedUtf8(parametersStr);
+                        ZResult getResult = getterSession.Loan().Get(gKey.Loan(), parameters, closureReply, getOpts);
+                        Assert.That(getResult.IsOk, Is.True, getResult.ToString());
+                    }
+                }
+
+                Assert.That(received.Wait(5000), Is.True, "Queryable callback not invoked within 5 seconds.");
+                Assert.That(receivedParameters, Is.EqualTo(parametersStr));
+                Assert.That(receivedPayloadLen, Is.EqualTo(queryPayload.Length));
+                Assert.That(receivedAttachmentLen, Is.EqualTo(attachmentPayload.Length));
+
+                CloseSession(queryableSession);
+                CloseSession(getterSession);
+            }
+        }
+
+        [Test]
+        public void QueryClone_CanBeUsedOutsideCallback()
+        {
+            byte[] keyExprBytes = System.Text.Encoding.UTF8.GetBytes("unity/test/bindings/queryclone");
+
+            using (ZOwnedSession queryableSession = OpenLocalhostZenohdSession())
+            using (ZOwnedSession getterSession = OpenLocalhostZenohdSession())
+            using (ZOwnedQueryable queryable = new ZOwnedQueryable())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                ZOwnedQuery clonedQuery = null;
+
+                ZResult qKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr qKey);
+                Assert.That(qKeyResult.IsOk, Is.True, qKeyResult.ToString());
+
+                using (ZOwnedClosureQuery closureQuery = new ZOwnedClosureQuery())
+                using (qKey)
+                {
+                    closureQuery.Set((query, context) =>
+                    {
+                        clonedQuery = ZOwnedQuery.CreateClone(query);
+
+                        byte[] replyBytes = System.Text.Encoding.UTF8.GetBytes("ok");
+                        ZResult r = ZOwnedBytes.TryCreateCopyFromBuf(replyBytes, (nuint)replyBytes.Length, out ZOwnedBytes replyPayload);
+                        if (r.IsOk)
+                        {
+                            using (ZQueryReplyOptions opts = ZQueryReplyOptions.Default())
+                            {
+                                query.Reply(query.KeyExpr(), replyPayload, opts);
+                            }
+                        }
+
+                        received.Set();
+                    }, null, IntPtr.Zero);
+
+                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
+                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                }
+
+                Thread.Sleep(200);
+
+                ZResult gKeyResult = ZOwnedKeyExpr.TryCreateFromSubstr(keyExprBytes, (nuint)keyExprBytes.Length, out ZOwnedKeyExpr gKey);
+                Assert.That(gKeyResult.IsOk, Is.True, gKeyResult.ToString());
+
+                using (ZOwnedClosureReply closureReply = new ZOwnedClosureReply())
+                using (gKey)
+                {
+                    closureReply.Set((reply, context) => { }, null, IntPtr.Zero);
+
+                    using (ZGetOptions getOpts = ZGetOptions.Default())
+                    {
+                        byte[] parameters = NullTerminatedUtf8("");
+                        ZResult getResult = getterSession.Loan().Get(gKey.Loan(), parameters, closureReply, getOpts);
+                        Assert.That(getResult.IsOk, Is.True, getResult.ToString());
+                    }
+                }
+
+                Assert.That(received.Wait(5000), Is.True, "Queryable callback not invoked within 5 seconds.");
+
+                using (clonedQuery)
+                {
+                    Assert.That(clonedQuery, Is.Not.Null);
+                    Assert.That(clonedQuery.Check(), Is.True);
+                    ZLoanedQuery loaned = clonedQuery.Loan();
+                    Assert.DoesNotThrow(() => loaned.KeyExpr());
+                }
+
+                CloseSession(queryableSession);
+                CloseSession(getterSession);
+            }
+        }
+
         private const string LocalhostZenohdClientConfig = @"
 {
   mode: ""client"",

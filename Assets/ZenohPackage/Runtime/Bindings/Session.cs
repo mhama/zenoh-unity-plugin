@@ -170,5 +170,61 @@ namespace Zenoh.Bindings
         {
             return ZenohNative.z_session_is_closed(NativePointer);
         }
+
+        public ZResult Get(
+            ZLoanedKeyExpr keyExpr,
+            byte[] nullTerminatedParameters,
+            ZOwnedClosureReply movingCallback,
+            ZGetOptions options)
+        {
+            if (keyExpr == null)
+                throw new ArgumentNullException(nameof(keyExpr));
+            if (nullTerminatedParameters == null)
+                throw new ArgumentNullException(nameof(nullTerminatedParameters));
+            if (movingCallback == null)
+                throw new ArgumentNullException(nameof(movingCallback));
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+            options.ThrowIfDisposed();
+
+            using (OwnedStorage<z_owned_closure_reply_t> callbackStorage = movingCallback.Take())
+            {
+                fixed (byte* parametersPtr = nullTerminatedParameters)
+                fixed (z_get_options_t* optionsPtr = &options.Native)
+                {
+                    return new ZResult(ZenohNative.z_get(
+                        NativePointer,
+                        keyExpr.NativePointer,
+                        parametersPtr,
+                        (z_moved_closure_reply_t*)callbackStorage.Pointer,
+                        optionsPtr));
+                }
+            }
+        }
+
+        public ZResult DeclareBackgroundQueryable(
+            ZLoanedKeyExpr keyExpr,
+            ZOwnedClosureQuery movingCallback,
+            ZQueryableOptions options)
+        {
+            if (keyExpr == null)
+                throw new ArgumentNullException(nameof(keyExpr));
+            if (movingCallback == null)
+                throw new ArgumentNullException(nameof(movingCallback));
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+
+            using (OwnedStorage<z_owned_closure_query_t> callbackStorage = movingCallback.Take())
+            {
+                fixed (z_queryable_options_t* optionsPtr = &options.Native)
+                {
+                    return new ZResult(ZenohNative.z_declare_background_queryable(
+                        NativePointer,
+                        keyExpr.NativePointer,
+                        (z_moved_closure_query_t*)callbackStorage.Pointer,
+                        optionsPtr));
+                }
+            }
+        }
     }
 }
