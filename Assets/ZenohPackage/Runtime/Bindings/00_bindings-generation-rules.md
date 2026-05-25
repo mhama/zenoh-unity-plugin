@@ -121,8 +121,13 @@ shape.
      `Set<FieldName>(ZLoaned<FieldType> <fieldName>)` methods that copy
      `NativePointer` into the native field. The caller is responsible for
      keeping the pointed-to data alive until the native call completes.
-   - Options classes with `z_moved_*` fields must implement `IDisposable`
-     because they adopt the moved wrappers' native storage.
+   - Options classes must always implement `IDisposable`.
+     Classes with `z_moved_*` fields release adopted storage in `Dispose()`.
+     Classes without `z_moved_*` fields have an empty `Dispose()` body.
+     This ensures that a non-breaking native API change (adding a
+     `z_moved_*` field to an existing options struct) does not force a
+     breaking change in the managed API (adding `IDisposable` after the
+     fact).
    - Options classes that adopt `OwnedStorage<T>` must not define finalizers.
      `OwnedStorage<T>` has its own finalizer safety net, and finalizer ordering
      is not reliable enough for options finalizers to call native drop safely.
