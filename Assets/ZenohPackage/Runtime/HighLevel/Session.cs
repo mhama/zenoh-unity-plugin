@@ -157,7 +157,13 @@ namespace Zenoh.HighLevel
                         return false;
                     zenohTokenClone = ZOwnedCancellationToken.CreateClone(zenohToken.Loan());
                     var cloneForCallback = zenohTokenClone;
-                    reg = cancellationToken.Register(() => cloneForCallback.Loan().Cancel());
+                    // z_cancellation_token_cancel blocks (SyncGroup::wait) until the Get
+                    // fully completes. Running it on the calling thread would deadlock
+                    // because the closure drop callback calls reg.Dispose(), which waits
+                    // for this registration callback to finish.
+                    reg = cancellationToken.Register(() =>
+                        System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+                            cloneForCallback.Loan().Cancel()));
                 }
 
                 ZClosureReplyCall call = (loanedReply, _) => onReply(new ReplyView(loanedReply));

@@ -425,7 +425,7 @@ namespace Zenoh.Tests
                             if (reply.IsOk)
                                 receivedPayload = reply.OkSample.Value.PayloadAsString();
                             received.Set();
-                        });
+                        }, options: new GetOptions { TimeoutMs = 5000 });
                     }
 
                     Assert.That(received.Wait(5000), Is.True,
@@ -470,7 +470,7 @@ namespace Zenoh.Tests
                             if (reply.IsOk)
                                 receivedPayload = reply.OkSample.Value.PayloadAsBytes();
                             received.Set();
-                        });
+                        }, options: new GetOptions { TimeoutMs = 5000 });
                     }
 
                     Assert.That(received.Wait(5000), Is.True,
@@ -515,7 +515,7 @@ namespace Zenoh.Tests
                             if (!reply.IsOk)
                                 receivedError = reply.ErrorPayloadAsString();
                             received.Set();
-                        });
+                        }, options: new GetOptions { TimeoutMs = 5000 });
                     }
 
                     Assert.That(received.Wait(5000), Is.True,
@@ -559,7 +559,7 @@ namespace Zenoh.Tests
                             if (reply.IsOk)
                                 receivedKind = reply.OkSample.Value.Kind;
                             received.Set();
-                        });
+                        }, options: new GetOptions { TimeoutMs = 5000 });
                     }
 
                     Assert.That(received.Wait(5000), Is.True,
@@ -618,7 +618,7 @@ namespace Zenoh.Tests
 
                     using (KeyExpr ke = KeyExpr.Parse(keyExpr))
                     {
-                        gSession.Get(ke, _ => { }, parameters: expectedParams);
+                        gSession.Get(ke, _ => { }, parameters: expectedParams, options: new GetOptions { TimeoutMs = 5000 });
                     }
 
                     Assert.That(received.Wait(5000), Is.True,
@@ -657,7 +657,7 @@ namespace Zenoh.Tests
 
                     using (KeyExpr ke = KeyExpr.Parse(keyExpr))
                     {
-                        gSession.Get(ke, _ => { }, options: new GetOptions { Payload = expectedPayload });
+                        gSession.Get(ke, _ => { }, options: new GetOptions { Payload = expectedPayload, TimeoutMs = 5000 });
                     }
 
                     Assert.That(received.Wait(5000), Is.True,
@@ -697,7 +697,7 @@ namespace Zenoh.Tests
                             if (reply.IsOk)
                                 replyEncoding = reply.OkSample.Value.EncodingMime;
                             received.Set();
-                        });
+                        }, options: new GetOptions { TimeoutMs = 5000 });
                     }
 
                     Assert.That(received.Wait(5000), Is.True,
@@ -739,7 +739,7 @@ namespace Zenoh.Tests
                             if (reply.IsOk)
                                 replyAttachment = reply.OkSample.Value.AttachmentAsBytes();
                             received.Set();
-                        });
+                        }, options: new GetOptions { TimeoutMs = 5000 });
                     }
 
                     Assert.That(received.Wait(5000), Is.True,
@@ -776,7 +776,7 @@ namespace Zenoh.Tests
                         bool ok = gSession.TryGet(ke, reply =>
                         {
                             received.Set();
-                        }, null, null, default, out ZResult result);
+                        }, null, new GetOptions { TimeoutMs = 5000 }, default, out ZResult result);
 
                         Assert.That(ok, Is.True, result.ToString());
                     }
