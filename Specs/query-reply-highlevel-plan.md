@@ -27,7 +27,8 @@ Bindings 層の Query/Reply/Queryable/Get API に対応する HighLevel Wrapper 
 Runtime/HighLevel/
   Queryable.cs              # Queryable (Pattern A) + QueryableDeclareOptions
   QueryView.cs              # QueryView (Pattern B) + QueryReplyOptions / QueryReplyErrOptions / QueryReplyDelOptions
-  ReplyView.cs              # ReplyView (Pattern B) + GetOptions
+  ReplyView.cs              # ReplyView (Pattern B)
+  GetOptions.cs             # GetOptions (POCO, Session.Get 用)
 ```
 
 Session.cs に `Get` / `TryGet` メソッドを追加する (新規ファイルは不要)。
@@ -91,8 +92,11 @@ public readonly struct QueryView
 
 - `Reply` の `keyExpr` 引数は `string` で受け取り、内部で `ZOwnedKeyExpr.TryCreateFromStr` を
   使って一時的な `ZOwnedKeyExpr` を作成・`Loan` し、呼び出し後に `Dispose` する。
+  - **keyExpr パース失敗時**: throwing 版は `ZenohException` を throw (`result.ThrowIfErr(...)` パターン)、
+    Try 版は `out ZResult` にパース失敗コードを返す。keyExpr パース失敗と Reply ネイティブコール失敗は
+    同じ `ZResult` に統合されるため、呼び出し側はどちらの原因かを区別できない点に注意。
 - `payload` は `BytesFactory.FromBuffer` / `BytesFactory.FromString` で `ZOwnedBytes` に変換する。
-- Bindings の `ZQueryReplyOptions` 等は `try / finally { Dispose() }` で管理する。
+- Bindings の `ZQueryReplyOptions` 等は IDisposable を実装しているため `try / finally { Dispose() }` で管理する。
 - `options` が `null` の場合はデフォルトオプションを使用する。
 
 ### Reply 内部実装フロー (概要)
@@ -318,7 +322,9 @@ public readonly struct ReplyView
 ### 公開 API
 
 ```csharp
-// Session.cs に追加
+// GetOptions.cs (独立ファイル)
+// Session.Get で使用するオプション。Session.cs や ReplyView.cs ではなく
+// 独立ファイルに配置し、発見容易性を確保する。
 public sealed class GetOptions
 {
     public ZQueryTarget? Target { get; set; }
@@ -372,7 +378,11 @@ Get(keyExpr, onReply, parameters, options, cancellationToken):
             () => zenohTokenClone.Loan().Cancel())
   5. try:
      a. ZClosureReplyCall adapter = (loanedReply, _) => onReply(new ReplyView(loanedReply))
-     b. Action drop = () => { reg.Dispose(); zenohTokenClone?.Dispose(); }
+     b. // ZClosureReplyDrop は Action<IntPtr> 型。ラムダキャプチャ経由で
+        // マネージドオブジェクトを参照する (IntPtr context は不使用)。
+        // Set 内部の GCHandle が ClosureState → drop delegate → キャプチャ変数を
+        // ルートとして保持するため、Zenoh が closure を drop するまで GC されない。
+        ZClosureReplyDrop drop = (IntPtr _) => { reg.Dispose(); zenohTokenClone?.Dispose(); }
      c. closure.Set(adapter, drop, IntPtr.Zero)
      d. byte[] parametersBytes = parameters == null
           ? Utf8Helper.EncodeNullTerminated("")
@@ -386,8 +396,26 @@ Get(keyExpr, onReply, parameters, options, cancellationToken):
           result.ThrowIfErr("Session.Get failed")
         finally:
           nativeOpts.Dispose()
-  6. catch: closure.Dispose(); throw;
+  6. catch:
+       // SetCancellationToken 前に例外が発生した場合、zenohToken は未 move なので
+       // ここで cleanup する。SetCancellationToken 後の場合は nativeOpts.Dispose() が
+       // ReleaseCancellationToken() 経由で zenohToken を解放済み。
+       reg.Dispose()                    // CancellationTokenRegistration の解除
+       zenohTokenClone?.Dispose()       // Clone の解放
+       zenohToken?.Dispose()            // original が未 move なら解放 (move 済みなら no-op)
+       closure.Dispose()
+       throw;
 ```
+
+**例外パスの ownership 整理:**
+- `zenohToken` は `nativeOpts.SetCancellationToken()` で move される。move 後は
+  `nativeOpts.Dispose()` → `ReleaseCancellationToken()` が解放を担当。
+- move **前** に例外が発生した場合、`zenohToken` は呼び出し側が Dispose する責務を持つ。
+  `ZOwnedCancellationToken.Dispose()` は冪等であるため、move 済みかどうかに関わらず
+  catch ブロックで安全に呼べる。
+- `zenohTokenClone` と `reg` は closure の drop コールバックで cleanup される想定だが、
+  Get 呼び出し前に例外が発生した場合は closure が Zenoh に渡されないため
+  drop コールバックは呼ばれない。catch ブロックで明示的に cleanup する。
 
 ### CancellationToken の内部動作
 
@@ -396,10 +424,17 @@ Get(keyExpr, onReply, parameters, options, cancellationToken):
 - `ZOwnedCancellationToken` を生成し、Clone を作成してから original を
   `ZGetOptions.SetCancellationToken` で move する。Clone 側を
   `CancellationTokenRegistration` のコールバックで Cancel に使う。
-- Closure の drop コールバックで `CancellationTokenRegistration` と
-  Clone の cleanup を行う。
+- Closure の drop コールバック (`ZClosureReplyDrop`: `Action<IntPtr>` 型) で
+  `CancellationTokenRegistration` と Clone の cleanup を行う。
+  drop コールバックはラムダキャプチャ経由でマネージドオブジェクトを参照し、
+  `IntPtr context` パラメータは使用しない (`IntPtr.Zero` を渡す)。
+  `Set` 内部の `GCHandle` が `ClosureState` → drop delegate → キャプチャ変数を
+  ルートとして保持するため、Zenoh が closure を drop するまで GC されない。
 - `CancellationToken.None` (default) の場合は zenohToken 生成をスキップし、
   drop コールバックも不要なので `null` を渡す。
+- **例外パスの cleanup**: Get 呼び出し前に例外が発生した場合、closure が Zenoh に
+  渡されないため drop コールバックは呼ばれない。catch ブロックで `reg.Dispose()` /
+  `zenohTokenClone?.Dispose()` / `zenohToken?.Dispose()` を明示的に行う。
 
 ### GetOptions POCO -> ZGetOptions 変換の詳細
 
@@ -428,7 +463,8 @@ options?.TimeoutMs        -> nativeOpts.SetTimeoutMs(...)
 |---|---|
 | `Runtime/HighLevel/Queryable.cs` | `Queryable` class + `QueryableDeclareOptions` class |
 | `Runtime/HighLevel/QueryView.cs` | `QueryView` struct + `QueryReplyOptions` / `QueryReplyErrOptions` / `QueryReplyDelOptions` |
-| `Runtime/HighLevel/ReplyView.cs` | `ReplyView` struct + `GetOptions` class |
+| `Runtime/HighLevel/ReplyView.cs` | `ReplyView` struct |
+| `Runtime/HighLevel/GetOptions.cs` | `GetOptions` class (Session.Get 用 POCO) |
 
 ### 変更ファイル
 
@@ -462,6 +498,30 @@ using Queryable queryable = Queryable.Declare(session, ke, query =>
     string responsePayload = query.PayloadAsString();
     query.Reply(query.KeyExpr, $"Hello! You said: {responsePayload}");
 });
+```
+
+### Queryable 側 (TryDeclare)
+
+```csharp
+using Zenoh.HighLevel;
+
+using Session session = Session.Open(configJson);
+using KeyExpr ke = KeyExpr.Parse("demo/query");
+
+if (Queryable.TryDeclare(session, ke, query =>
+{
+    query.Reply(query.KeyExpr, "pong");
+}, null, out var queryable, out var result))
+{
+    using (queryable)
+    {
+        // queryable を使用
+    }
+}
+else
+{
+    Debug.LogError($"Queryable declare failed: {result}");
+}
 ```
 
 ### Get 側 (クライアント)
