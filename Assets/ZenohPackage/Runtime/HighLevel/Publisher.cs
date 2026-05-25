@@ -102,6 +102,20 @@ namespace Zenoh.HighLevel
             PutCore(BytesFactory.FromBuffer(payload), encoding);
         }
 
+        /// <summary>
+        /// Publishes the payload without copying by pinning the managed array.
+        ///
+        /// The caller must NOT mutate <paramref name="payload"/> until Zenoh has
+        /// finished sending it (the buffer is shared with native code).
+        /// </summary>
+        public void PutZeroCopy(byte[] payload, EncodingPreset? encoding = null)
+        {
+            if (payload == null)
+                throw new ArgumentNullException(nameof(payload));
+
+            PutCore(BytesFactory.FromBufferZeroCopy(payload), encoding);
+        }
+
         public bool TryPut(string payload, EncodingPreset? encoding, out ZResult result)
         {
             if (payload == null)
@@ -116,6 +130,20 @@ namespace Zenoh.HighLevel
                 throw new ArgumentNullException(nameof(payload));
 
             return TryPutCore(BytesFactory.FromBuffer(payload), encoding, out result);
+        }
+
+        /// <summary>
+        /// Zero-copy variant of <see cref="TryPut(byte[], EncodingPreset?, out ZResult)"/>.
+        ///
+        /// The caller must NOT mutate <paramref name="payload"/> until Zenoh has
+        /// finished sending it.
+        /// </summary>
+        public bool TryPutZeroCopy(byte[] payload, EncodingPreset? encoding, out ZResult result)
+        {
+            if (payload == null)
+                throw new ArgumentNullException(nameof(payload));
+
+            return TryPutCore(BytesFactory.FromBufferZeroCopy(payload), encoding, out result);
         }
 
         private void PutCore(ZOwnedBytes movingPayload, EncodingPreset? encoding)

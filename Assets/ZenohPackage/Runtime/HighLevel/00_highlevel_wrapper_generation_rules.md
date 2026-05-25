@@ -241,19 +241,31 @@ and the future `Queryable`, `Querier`, `MatchingListener`, `LivelinessSubscriber
 
 ## Memory efficiency
 
-### Zero-copy publish
+### Publish: copy by default, opt-in zero-copy
 
 `Publisher.Put(byte[] payload, …)` routes through
-`BytesFactory.FromBuffer(byte[])` → `ZOwnedBytes.TryCreateFromManagedBuf`,
-which pins the managed array via `GCHandle` and registers a deleter that
-unpins when Zenoh drops the bytes. This avoids the managed→native copy that
-`ZOwnedBytes.TryCreateCopyFromBuf` performs.
+`BytesFactory.FromBuffer(byte[])` → `ZOwnedBytes.TryCreateCopyFromBuf`,
+which copies the managed array into Zenoh-owned memory. This is safe: the
+caller may freely mutate or discard the buffer after `Put` returns.
+
+For performance-sensitive paths, `Publisher.PutZeroCopy(byte[] payload, …)`
+routes through `BytesFactory.FromBufferZeroCopy(byte[])` →
+`ZOwnedBytes.TryCreateFromManagedBuf`, which pins the managed array via
+`GCHandle` and registers a deleter that unpins when Zenoh drops the bytes.
+**The caller must NOT mutate the buffer until Zenoh has finished with it**
+(i.e. until the deleter fires). Since the caller has no visibility into when
+the deleter fires, this path is only appropriate when the buffer is
+effectively write-once (e.g. freshly serialized each frame).
 
 Rules:
 
-- Whenever the HighLevel API can take a `byte[]` directly, use the
-  pin-based path. Reserve `TryCreateCopyFromBuf` for cases where the caller
-  hands a `ReadOnlySpan<byte>` or other unpinnable source.
+- Default `byte[]` ingress uses the copy path (`TryCreateCopyFromBuf`).
+  This is the safe default for the ergonomic HighLevel API.
+- Zero-copy ingress is exposed via explicitly named `*ZeroCopy` methods
+  (e.g. `PutZeroCopy`, `TryPutZeroCopy`). The naming makes the shared-
+  ownership contract visible at the call site.
+- `ReadOnlySpan<byte>` always uses the copy path (spans cannot be pinned
+  across an async lifetime).
 - Do **not** add GCHandle / pin lifecycle code into HighLevel. Hand-written
   factories that involve GCHandle live in Bindings (see `Bytes.Pinned.cs`
   pattern in `00_bindings-generation-rules.md`).
@@ -309,6 +321,20 @@ Guidance for callbacks:
   obvious from the name. Lifetime hazards (Pattern B "do not retain"), pin
   semantics, and threading constraints are mandatory to document.
 - Avoid restating Bindings invariants in HighLevel comments; link instead.
+- XML doc `<summary>` format: the first line is a compact caption describing
+  what the method does, followed by a blank `///` line, then any caveats or
+  constraints. Example:
+  ```csharp
+  /// <summary>
+  /// Publishes the payload without copying by pinning the managed array.
+  ///
+  /// The caller must NOT mutate <paramref name="payload"/> until Zenoh has
+  /// finished sending it (the buffer is shared with native code).
+  /// </summary>
+  ```
+- Methods that impose caller-side constraints (buffer mutation forbidden,
+  valid only inside a callback, required call ordering, etc.) must document
+  the constraint and its rationale in the `<summary>` using this format.
 
 ## Checklist when adding a new HighLevel type
 
@@ -326,8 +352,9 @@ Guidance for callbacks:
        method has `ThrowIfDisposed` (Pattern A).
 9. [ ] Internal accessor (`LoanInternal`) provided only if sibling HighLevel
        classes need it.
-10. [ ] `byte[]` payload ingress uses the pin path
-        (`ZOwnedBytes.TryCreateFromManagedBuf`).
+10. [ ] `byte[]` payload ingress uses the copy path by default
+        (`ZOwnedBytes.TryCreateCopyFromBuf`). Zero-copy variant via
+        explicitly named `*ZeroCopy` method if needed.
 11. [ ] Sample / received-bytes path uses `PayloadCopyTo` or the contiguous-view
         helper rather than `z_bytes_to_slice` round-trips.
 12. [ ] Sample under `Assets/ZenohSampleScenes/` updated or added if the new

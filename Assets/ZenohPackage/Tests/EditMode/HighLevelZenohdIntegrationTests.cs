@@ -123,7 +123,7 @@ namespace Zenoh.Tests
         }
 
         [Test]
-        public void Publisher_PutByteArray_DeliversZeroCopyPayload()
+        public void Publisher_PutByteArray_DeliversCopiedPayload()
         {
             const string keyExpr = "unity/test/highlevel/bytes";
             byte[] payload = MakeByteSequence(0, 4096);
@@ -149,6 +149,50 @@ namespace Zenoh.Tests
                     {
                         WaitForMatchingSubscriber(publisher);
                         publisher.Put(payload);
+
+                        Assert.That(received.Wait(2000), Is.True);
+                        Assert.That(receivedLength, Is.EqualTo(payload.Length));
+                        Assert.That(receivedPayload, Is.EqualTo(payload));
+                    }
+                    finally
+                    {
+                        publisher.Dispose();
+                    }
+                }
+                finally
+                {
+                    subscriber.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Publisher_PutZeroCopy_DeliversPinnedPayload()
+        {
+            const string keyExpr = "unity/test/highlevel/zerocopy";
+            byte[] payload = MakeByteSequence(0, 4096);
+
+            using (Session subSession = OpenClientSession())
+            using (Session pubSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                byte[] receivedPayload = null;
+                int receivedLength = -1;
+
+                Subscriber subscriber = DeclareSubscriber(subSession, keyExpr, sample =>
+                {
+                    receivedLength = sample.PayloadLength;
+                    receivedPayload = sample.PayloadAsBytes();
+                    received.Set();
+                });
+
+                try
+                {
+                    Publisher publisher = DeclarePublisher(pubSession, keyExpr, null);
+                    try
+                    {
+                        WaitForMatchingSubscriber(publisher);
+                        publisher.PutZeroCopy(payload);
 
                         Assert.That(received.Wait(2000), Is.True);
                         Assert.That(receivedLength, Is.EqualTo(payload.Length));
