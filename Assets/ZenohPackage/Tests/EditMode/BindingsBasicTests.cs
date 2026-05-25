@@ -310,8 +310,10 @@ namespace Zenoh.Tests
         [Test]
         public void ZQueryableOptions_DefaultDoesNotRequireDispose()
         {
-            ZQueryableOptions options = ZQueryableOptions.Default();
-            Assert.That(options, Is.Not.Null);
+            using (ZQueryableOptions options = ZQueryableOptions.Default())
+            {
+                Assert.That(options, Is.Not.Null);
+            }
         }
 
         [Test]

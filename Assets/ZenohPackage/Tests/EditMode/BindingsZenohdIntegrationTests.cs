@@ -61,14 +61,15 @@ namespace Zenoh.Tests
                         received.Set();
                     }, null, IntPtr.Zero);
 
-                    ZSubscriberOptions subscriberOptions = ZSubscriberOptions.Default();
-
-                    ZResult declareSubscriber = subscriber.Declare(
-                        subscriberSession.Loan(),
-                        subscriberKeyExpr.Loan(),
-                        callback,
-                        subscriberOptions);
-                    Assert.That(declareSubscriber.IsOk, Is.True, declareSubscriber.ToString());
+                    using (ZSubscriberOptions subscriberOptions = ZSubscriberOptions.Default())
+                    {
+                        ZResult declareSubscriber = subscriber.Declare(
+                            subscriberSession.Loan(),
+                            subscriberKeyExpr.Loan(),
+                            callback,
+                            subscriberOptions);
+                        Assert.That(declareSubscriber.IsOk, Is.True, declareSubscriber.ToString());
+                    }
                 }
 
                 using (ZPublisherOptions publisherOptions = ZPublisherOptions.Default())
@@ -142,23 +143,26 @@ namespace Zenoh.Tests
             {
                 Assert.That(configResult.IsOk, Is.True, configResult.ToString());
 
-                ZOpenOptions options = ZOpenOptions.Default();
-
-                ZResult openResult = ZOwnedSession.TryCreateOpen(config, options, out ZOwnedSession session);
-                if (!openResult.IsOk)
+                using (ZOpenOptions options = ZOpenOptions.Default())
                 {
-                    session?.Dispose();
-                    Assert.Fail($"z_open failed. Ensure zenohd is listening on {ZenohdTestServer.Endpoint}. Result: {openResult}");
-                }
+                    ZResult openResult = ZOwnedSession.TryCreateOpen(config, options, out ZOwnedSession session);
+                    if (!openResult.IsOk)
+                    {
+                        session?.Dispose();
+                        Assert.Fail($"z_open failed. Ensure zenohd is listening on {ZenohdTestServer.Endpoint}. Result: {openResult}");
+                    }
 
-                return session;
+                    return session;
+                }
             }
         }
 
         private static void CloseSession(ZOwnedSession session)
         {
-            ZCloseOptions closeOptions = ZCloseOptions.Default();
-            session.Loan().Close(closeOptions);
+            using (ZCloseOptions closeOptions = ZCloseOptions.Default())
+            {
+                session.Loan().Close(closeOptions);
+            }
         }
 
         private static byte[] NullTerminatedUtf8(string value)
@@ -197,9 +201,11 @@ namespace Zenoh.Tests
                         }
                     }, null, IntPtr.Zero);
 
-                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
-                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
-                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    using (ZQueryableOptions qOpts = ZQueryableOptions.Default())
+                    {
+                        ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                        Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    }
                 }
 
                 Thread.Sleep(200);
@@ -270,9 +276,11 @@ namespace Zenoh.Tests
                         }
                     }, null, IntPtr.Zero);
 
-                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
-                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
-                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    using (ZQueryableOptions qOpts = ZQueryableOptions.Default())
+                    {
+                        ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                        Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    }
                 }
 
                 Thread.Sleep(200);
@@ -339,9 +347,11 @@ namespace Zenoh.Tests
                         }
                     }, null, IntPtr.Zero);
 
-                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
-                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
-                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    using (ZQueryableOptions qOpts = ZQueryableOptions.Default())
+                    {
+                        ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                        Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    }
                 }
 
                 Thread.Sleep(200);
@@ -432,9 +442,11 @@ namespace Zenoh.Tests
                         received.Set();
                     }, null, IntPtr.Zero);
 
-                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
-                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
-                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    using (ZQueryableOptions qOpts = ZQueryableOptions.Default())
+                    {
+                        ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                        Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    }
                 }
 
                 Thread.Sleep(200);
@@ -511,9 +523,11 @@ namespace Zenoh.Tests
                         received.Set();
                     }, null, IntPtr.Zero);
 
-                    ZQueryableOptions qOpts = ZQueryableOptions.Default();
-                    ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
-                    Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    using (ZQueryableOptions qOpts = ZQueryableOptions.Default())
+                    {
+                        ZResult declareResult = queryable.Declare(queryableSession.Loan(), qKey.Loan(), closureQuery, qOpts);
+                        Assert.That(declareResult.IsOk, Is.True, declareResult.ToString());
+                    }
                 }
 
                 Thread.Sleep(200);
