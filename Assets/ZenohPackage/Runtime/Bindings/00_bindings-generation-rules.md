@@ -260,6 +260,27 @@ For owned wrappers (`ZOwned*`):
   reference only prevents managed GC collection; it cannot prevent native
   use-after-free after explicit `Dispose()`.
 
+## Unsafe API documentation
+
+Methods that cannot fully prevent native crashes through managed-side checks
+must include an **UNSAFE** marker in the XML doc `<summary>`. Place a short
+method description on the first line, then an `UNSAFE:` paragraph stating
+what goes wrong and when.
+
+```
+/// <summary>
+/// Sets the timestamp for the reply.
+///
+/// UNSAFE: Stores a borrowed pointer without taking ownership.
+/// The caller must keep the source alive until the native call completes;
+/// disposing the source beforehand causes a native crash (dangling pointer).
+/// </summary>
+```
+
+Known patterns requiring this marker: borrowed-pointer setters
+(`SetTimestamp`, `SetSourceInfo`), `CreateTakeFromLoaned`, and closure
+`DispatchCall` (use `UNSAFE CALLBACK LIFETIME` prefix).
+
 ## Testing
 
 Every binding change must come with tests. The mechanical conversion is
