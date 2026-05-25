@@ -169,9 +169,12 @@ namespace Zenoh.Bindings
             byte* data = ZenohNative.z_slice_data(loanedSlice);
             long len = (long)ZenohNative.z_slice_len(loanedSlice);
 
+            if (len > int.MaxValue)
+                throw new OverflowException("Slice length exceeds int.MaxValue.");
+
             byte[] result = new byte[len];
             if (len > 0)
-                Marshal.Copy((IntPtr)data, result, 0, (int)len);
+                Marshal.Copy((IntPtr)data, result, 0, checked((int)len));
 
             ZenohNative.z_slice_drop((z_moved_slice_t*)&slice);
             return result;
