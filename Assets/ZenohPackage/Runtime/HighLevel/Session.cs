@@ -60,9 +60,12 @@ namespace Zenoh.HighLevel
                 throw new ArgumentNullException(nameof(config));
 
             ZOwnedConfig movingConfig = config.ConsumeForOpen();
-            ZResult result = ZOwnedSession.TryCreateOpen(movingConfig, ZOpenOptions.Default(), out ZOwnedSession owned);
-            result.ThrowIfErr("Session.Open failed");
-            return new Session(owned);
+            using (ZOpenOptions options = ZOpenOptions.Default())
+            {
+                ZResult result = ZOwnedSession.TryCreateOpen(movingConfig, options, out ZOwnedSession owned);
+                result.ThrowIfErr("Session.Open failed");
+                return new Session(owned);
+            }
         }
 
         public static bool TryOpen(Config config, out Session session, out ZResult result)
@@ -71,23 +74,32 @@ namespace Zenoh.HighLevel
                 throw new ArgumentNullException(nameof(config));
 
             ZOwnedConfig movingConfig = config.ConsumeForOpen();
-            result = ZOwnedSession.TryCreateOpen(movingConfig, ZOpenOptions.Default(), out ZOwnedSession owned);
-            session = result.IsOk ? new Session(owned) : null;
-            return result.IsOk;
+            using (ZOpenOptions options = ZOpenOptions.Default())
+            {
+                result = ZOwnedSession.TryCreateOpen(movingConfig, options, out ZOwnedSession owned);
+                session = result.IsOk ? new Session(owned) : null;
+                return result.IsOk;
+            }
         }
 
         public void Close()
         {
             ThrowIfDisposed();
-            ZResult result = owned.Loan().Close(ZCloseOptions.Default());
-            result.ThrowIfErr("Session.Close failed");
+            using (ZCloseOptions options = ZCloseOptions.Default())
+            {
+                ZResult result = owned.Loan().Close(options);
+                result.ThrowIfErr("Session.Close failed");
+            }
         }
 
         public bool TryClose(out ZResult result)
         {
             ThrowIfDisposed();
-            result = owned.Loan().Close(ZCloseOptions.Default());
-            return result.IsOk;
+            using (ZCloseOptions options = ZCloseOptions.Default())
+            {
+                result = owned.Loan().Close(options);
+                return result.IsOk;
+            }
         }
 
         public bool IsClosed

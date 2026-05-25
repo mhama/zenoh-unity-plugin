@@ -179,9 +179,10 @@ namespace Zenoh.Bindings
         }
     }
 
-    public unsafe sealed class ZQueryableOptions
+    public unsafe sealed class ZQueryableOptions : IDisposable
     {
         internal z_queryable_options_t Native;
+        private bool disposed;
 
         public static ZQueryableOptions Default()
         {
@@ -200,12 +201,28 @@ namespace Zenoh.Bindings
 
         public void SetComplete(bool value)
         {
+            ThrowIfDisposed();
             Native.complete = value;
         }
 
         public void SetAllowedOrigin(ZLocality value)
         {
+            ThrowIfDisposed();
             Native.allowed_origin = (z_locality_t)value;
+        }
+
+        internal void ThrowIfDisposed()
+        {
+            if (disposed)
+                throw new ObjectDisposedException(nameof(ZQueryableOptions));
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
         }
     }
 

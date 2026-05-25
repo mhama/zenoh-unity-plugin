@@ -42,21 +42,22 @@ namespace Zenoh.HighLevel
                 ZClosureSampleCall call = (loanedSample, _) => onSample(new SampleView(loanedSample));
                 closure.Set(call, null, IntPtr.Zero);
 
-                ZSubscriberOptions options = ZSubscriberOptions.Default();
-
-                // Declare consumes the closure (Take) regardless of success/failure,
-                // so closure.Dispose() afterwards is a no-op.
-                result = owned.Declare(session.LoanInternal(), keyExpr.LoanInternal(), closure, options);
-
-                if (!result.IsOk)
+                using (ZSubscriberOptions options = ZSubscriberOptions.Default())
                 {
-                    owned.Dispose();
-                    subscriber = null;
-                    return false;
-                }
+                    // Declare consumes the closure (Take) regardless of success/failure,
+                    // so closure.Dispose() afterwards is a no-op.
+                    result = owned.Declare(session.LoanInternal(), keyExpr.LoanInternal(), closure, options);
 
-                subscriber = new Subscriber(owned);
-                return true;
+                    if (!result.IsOk)
+                    {
+                        owned.Dispose();
+                        subscriber = null;
+                        return false;
+                    }
+
+                    subscriber = new Subscriber(owned);
+                    return true;
+                }
             }
             catch
             {

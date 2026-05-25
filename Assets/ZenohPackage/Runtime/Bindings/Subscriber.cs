@@ -10,9 +10,10 @@ namespace Zenoh.Bindings
     public delegate void ZClosureSampleCall(ZLoanedSample sample, IntPtr context);
     public delegate void ZClosureSampleDrop(IntPtr context);
 
-    public unsafe sealed class ZSubscriberOptions
+    public unsafe sealed class ZSubscriberOptions : IDisposable
     {
         internal z_subscriber_options_t Native;
+        private bool disposed;
 
         public static ZSubscriberOptions Default()
         {
@@ -27,6 +28,20 @@ namespace Zenoh.Bindings
             {
                 ZenohNative.z_subscriber_options_default(ptr);
             }
+        }
+
+        internal void ThrowIfDisposed()
+        {
+            if (disposed)
+                throw new ObjectDisposedException(nameof(ZSubscriberOptions));
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
         }
     }
 

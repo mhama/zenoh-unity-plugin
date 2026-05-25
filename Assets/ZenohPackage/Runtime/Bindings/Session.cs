@@ -4,9 +4,10 @@ using Zenoh.Plugins;
 
 namespace Zenoh.Bindings
 {
-    public unsafe sealed class ZOpenOptions
+    public unsafe sealed class ZOpenOptions : IDisposable
     {
         internal z_open_options_t Native;
+        private bool disposed;
 
         public static ZOpenOptions Default()
         {
@@ -22,11 +23,26 @@ namespace Zenoh.Bindings
                 ZenohNative.z_open_options_default(ptr);
             }
         }
+
+        internal void ThrowIfDisposed()
+        {
+            if (disposed)
+                throw new ObjectDisposedException(nameof(ZOpenOptions));
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
+        }
     }
 
-    public unsafe sealed class ZCloseOptions
+    public unsafe sealed class ZCloseOptions : IDisposable
     {
         internal z_close_options_t Native;
+        private bool disposed;
 
         public static ZCloseOptions Default()
         {
@@ -41,6 +57,20 @@ namespace Zenoh.Bindings
             {
                 ZenohNative.z_close_options_default(ptr);
             }
+        }
+
+        internal void ThrowIfDisposed()
+        {
+            if (disposed)
+                throw new ObjectDisposedException(nameof(ZCloseOptions));
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
         }
     }
 
