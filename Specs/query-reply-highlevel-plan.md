@@ -558,19 +558,164 @@ cancellationToken: cts.Token);
 
 ---
 
-## 8. 実装順序
+## 8. ユニットテスト計画
+
+既存の `HighLevelBasicTests.cs` / `HighLevelZenohdIntegrationTests.cs` のパターンに準拠する。
+
+### 8.1 BasicTests (HighLevelBasicTests.cs に追加)
+
+zenohd 不要。null チェック・例外パスのみ検証。
+
+| テストメソッド | 検証内容 |
+|---|---|
+| `Queryable_Declare_NullSessionThrowsArgumentNull` | `Queryable.Declare(null, keyExpr, _ => {})` → `ArgumentNullException` |
+| `Queryable_Declare_NullCallbackThrowsArgumentNull` | `Queryable.Declare(session, keyExpr, null)` → `ArgumentNullException` (session は実在不要なため Bindings 側到達前に throw されることを確認。ただし Session が null 不可の場合は上のテストで代用) |
+| `GetOptions_DefaultPropertyValues` | `new GetOptions()` の全プロパティが null / default であること |
+| `QueryReplyOptions_DefaultPropertyValues` | `new QueryReplyOptions()` の全プロパティが null / default であること |
+
+### 8.2 Integration Tests (HighLevelZenohdIntegrationTests.cs に追加)
+
+zenohd を起動して実際のクエリ/レプライ往復を検証。
+既存の `ManualResetEventSlim` + タイムアウトパターンを踏襲。
+
+| テストメソッド | 検証内容 |
+|---|---|
+| `Queryable_ReplyString_DeliveredToGet` | Queryable が受けたクエリに文字列で Reply → Get 側で `ReplyView.IsOk == true`、`OkSample.PayloadAsString()` がペイロードと一致 |
+| `Queryable_ReplyBytes_DeliveredToGet` | byte[] ペイロードで Reply → Get 側で `PayloadAsBytes()` が一致 |
+| `Queryable_ReplyErr_DeliveredToGet` | `QueryView.ReplyErr` → Get 側で `ReplyView.IsOk == false`、`ErrorPayloadAsString()` が一致 |
+| `Queryable_ReplyDel_DeliveredToGet` | `QueryView.ReplyDel` → Get 側で `OkSample.Kind == ZSampleKind.Delete` |
+| `Queryable_TryDeclare_WithValidArgsReturnsTrue` | `Queryable.TryDeclare` が `true` を返し、queryable が non-null |
+| `Session_Get_WithParameters_QueryReceivesParameters` | Get に `parameters: "key=value"` を渡す → Queryable 側で `QueryView.Parameters == "key=value"` |
+| `Session_Get_WithPayload_QueryReceivesPayload` | `GetOptions { Payload = ... }` → Queryable 側で `QueryView.PayloadAsBytes()` が一致 |
+| `Session_Get_WithEncoding_QueryReceivesEncoding` | `QueryReplyOptions { Encoding = TextPlain }` → Get 側で `OkSample.EncodingMime` が `"text/plain"` を含む |
+| `Session_Get_WithAttachment_QueryReceivesAttachment` | `QueryReplyOptions { Attachment = ... }` → Get 側で `OkSample.AttachmentAsBytes()` が一致 |
+| `Session_TryGet_ReturnsTrueOnSuccess` | `TryGet` が `true` を返し、コールバックが呼ばれる |
+| `Session_Get_CancellationToken_CancelsGet` | `CancellationTokenSource.Cancel()` 後にクエリが中断されること (タイムアウトより早く完了することを検証) |
+
+### 8.3 テストヘルパー (既存ヘルパーに追加)
+
+```csharp
+private static Queryable DeclareQueryable(
+    Session session, string keyExprString, Action<QueryView> onQuery)
+{
+    using (KeyExpr keyExpr = KeyExpr.Parse(keyExprString))
+    {
+        return Queryable.Declare(session, keyExpr, onQuery);
+    }
+}
+```
+
+### 8.4 テスト実装パターン (代表例)
+
+```csharp
+[Test]
+public void Queryable_ReplyString_DeliveredToGet()
+{
+    const string keyExpr = "unity/test/highlevel/queryreply/string";
+    const string replyPayload = "hello from queryable";
+
+    using (Session qSession = OpenClientSession())
+    using (Session gSession = OpenClientSession())
+    using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+    {
+        bool receivedIsOk = false;
+        string receivedPayload = null;
+
+        Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+        {
+            query.Reply(query.KeyExpr, replyPayload);
+        });
+
+        try
+        {
+            using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+            {
+                gSession.Get(ke, reply =>
+                {
+                    receivedIsOk = reply.IsOk;
+                    if (reply.IsOk)
+                        receivedPayload = reply.OkSample.Value.PayloadAsString();
+                    received.Set();
+                });
+            }
+
+            Assert.That(received.Wait(5000), Is.True,
+                "No reply received within 5 seconds.");
+            Assert.That(receivedIsOk, Is.True);
+            Assert.That(receivedPayload, Is.EqualTo(replyPayload));
+        }
+        finally
+        {
+            queryable.Dispose();
+        }
+    }
+}
+```
+
+### 8.5 CancellationToken テストパターン
+
+```csharp
+[Test]
+public void Session_Get_CancellationToken_CancelsGet()
+{
+    const string keyExpr = "unity/test/highlevel/get/cancel";
+
+    using (Session qSession = OpenClientSession())
+    using (Session gSession = OpenClientSession())
+    using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+    using (CancellationTokenSource cts = new CancellationTokenSource())
+    {
+        // Queryable を宣言するが Reply しない → Get はタイムアウトまで待つ
+        Queryable queryable = DeclareQueryable(qSession, keyExpr, query => { });
+
+        try
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+
+            using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+            {
+                gSession.Get(ke, reply =>
+                {
+                    received.Set();
+                },
+                options: new GetOptions { TimeoutMs = 30000 },
+                cancellationToken: cts.Token);
+            }
+
+            // 即座にキャンセル
+            cts.Cancel();
+
+            // タイムアウト (30s) より大幅に早く完了することを検証
+            // (closure の drop が呼ばれて received.Set() される可能性があるため Wait する)
+            Thread.Sleep(2000);
+            Assert.That(sw.ElapsedMilliseconds, Is.LessThan(10000),
+                "Get should have been cancelled well before the 30s timeout.");
+        }
+        finally
+        {
+            queryable.Dispose();
+        }
+    }
+}
+```
+
+---
+
+## 9. 実装順序
 
 1. **ReplyView** — `readonly struct`。依存が少ないため最初に実装。
 2. **QueryView** — `readonly struct`。Reply メソッドが Bindings の Query.Reply を呼ぶ。
 3. **Queryable** — Subscriber パターンのほぼコピー。QueryView をコールバックに渡す。
 4. **Session.Get / TryGet** — Session.cs への追加。ReplyView をコールバックに渡す。
-5. **サンプルシーン** — BindingTests の HighLevel 版。
+5. **BasicTests** — null チェック・POCO デフォルト値テスト (zenohd 不要)。
+6. **Integration Tests** — zenohd 起動して query/reply 往復テスト。
+7. **サンプルシーン** — BindingTests の HighLevel 版。
 
 各ステップ完了ごとにコンパイル確認を行う。
 
 ---
 
-## 9. generation rules チェックリスト
+## 10. generation rules チェックリスト
 
 以下のチェック項目は全て対応する:
 
@@ -589,7 +734,7 @@ cancellationToken: cts.Token);
 
 ---
 
-## 10. スコープ外 (将来検討)
+## 11. スコープ外 (将来検討)
 
 - `Querier` (declared querier) — `z_declare_querier` の HighLevel ラッパー。
   Session.Get とは別にステートフルなクエリ発行者として宣言するパターン。
