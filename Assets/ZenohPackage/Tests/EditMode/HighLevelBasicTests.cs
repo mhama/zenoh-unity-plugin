@@ -160,5 +160,55 @@ namespace Zenoh.Tests
         {
             Assert.Throws<ArgumentNullException>(() => Subscriber.Declare(null, null, _ => { }));
         }
+
+        [Test]
+        public void Queryable_Declare_NullSessionThrowsArgumentNull()
+        {
+            using (KeyExpr keyExpr = KeyExpr.Parse("demo/test"))
+            {
+                KeyExpr capturedKeyExpr = keyExpr;
+                Assert.Throws<ArgumentNullException>(() => Queryable.Declare(null, capturedKeyExpr, _ => { }));
+            }
+        }
+
+        [Test]
+        public void Queryable_Declare_NullCallbackThrowsArgumentNull()
+        {
+            using (KeyExpr keyExpr = KeyExpr.Parse("demo/test"))
+            {
+                KeyExpr capturedKeyExpr = keyExpr;
+                Assert.Throws<ArgumentNullException>(() => Queryable.Declare(null, capturedKeyExpr, null));
+            }
+        }
+
+        [Test]
+        public void GetOptions_DefaultPropertyValues()
+        {
+            GetOptions options = new GetOptions();
+
+            Assert.That(options.Target, Is.Null);
+            Assert.That(options.Consolidation, Is.Null);
+            Assert.That(options.Payload, Is.Null);
+            Assert.That(options.Encoding, Is.Null);
+            Assert.That(options.CongestionControl, Is.Null);
+            Assert.That(options.IsExpress, Is.Null);
+            Assert.That(options.AllowedDestination, Is.Null);
+            Assert.That(options.AcceptReplies, Is.Null);
+            Assert.That(options.Priority, Is.Null);
+            Assert.That(options.Attachment, Is.Null);
+            Assert.That(options.TimeoutMs, Is.Null);
+        }
+
+        [Test]
+        public void QueryReplyOptions_DefaultPropertyValues()
+        {
+            QueryReplyOptions options = new QueryReplyOptions();
+
+            Assert.That(options.Encoding, Is.Null);
+            Assert.That(options.CongestionControl, Is.Null);
+            Assert.That(options.Priority, Is.Null);
+            Assert.That(options.IsExpress, Is.Null);
+            Assert.That(options.Attachment, Is.Null);
+        }
     }
 }

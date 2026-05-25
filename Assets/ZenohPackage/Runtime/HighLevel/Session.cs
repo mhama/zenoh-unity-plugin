@@ -1,5 +1,7 @@
 using System;
+using System.Threading;
 using Zenoh.Bindings;
+using Zenoh.HighLevel.Internal;
 
 namespace Zenoh.HighLevel
 {
@@ -108,6 +110,124 @@ namespace Zenoh.HighLevel
             {
                 ThrowIfDisposed();
                 return owned.Loan().IsClosed();
+            }
+        }
+
+        public void Get(KeyExpr keyExpr, Action<ReplyView> onReply, string parameters = null, GetOptions options = null, CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCore(keyExpr, onReply, parameters, options, cancellationToken, out ZResult result))
+                result.ThrowIfErr("Session.Get failed");
+        }
+
+        public void Get(string keyExprString, Action<ReplyView> onReply, string parameters = null, GetOptions options = null, CancellationToken cancellationToken = default)
+        {
+            if (keyExprString == null)
+                throw new ArgumentNullException(nameof(keyExprString));
+
+            using (KeyExpr keyExpr = KeyExpr.Parse(keyExprString))
+            {
+                Get(keyExpr, onReply, parameters, options, cancellationToken);
+            }
+        }
+
+        public bool TryGet(KeyExpr keyExpr, Action<ReplyView> onReply, string parameters, GetOptions options, CancellationToken cancellationToken, out ZResult result)
+        {
+            return TryGetCore(keyExpr, onReply, parameters, options, cancellationToken, out result);
+        }
+
+        private bool TryGetCore(KeyExpr keyExpr, Action<ReplyView> onReply, string parameters, GetOptions options, CancellationToken cancellationToken, out ZResult result)
+        {
+            if (keyExpr == null)
+                throw new ArgumentNullException(nameof(keyExpr));
+            if (onReply == null)
+                throw new ArgumentNullException(nameof(onReply));
+            ThrowIfDisposed();
+
+            ZOwnedClosureReply closure = new ZOwnedClosureReply();
+            ZOwnedCancellationToken zenohToken = null;
+            ZOwnedCancellationToken zenohTokenClone = null;
+            CancellationTokenRegistration reg = default;
+
+            try
+            {
+                if (cancellationToken.CanBeCanceled)
+                {
+                    result = ZOwnedCancellationToken.TryCreateNew(out zenohToken);
+                    if (!result.IsOk)
+                        return false;
+                    zenohTokenClone = ZOwnedCancellationToken.CreateClone(zenohToken.Loan());
+                    var cloneForCallback = zenohTokenClone;
+                    reg = cancellationToken.Register(() => cloneForCallback.Loan().Cancel());
+                }
+
+                ZClosureReplyCall call = (loanedReply, _) => onReply(new ReplyView(loanedReply));
+
+                var regForDrop = reg;
+                var cloneForDrop = zenohTokenClone;
+                ZClosureReplyDrop drop = cancellationToken.CanBeCanceled
+                    ? (IntPtr _) => { regForDrop.Dispose(); cloneForDrop?.Dispose(); }
+                    : (ZClosureReplyDrop)null;
+
+                closure.Set(call, drop, IntPtr.Zero);
+
+                byte[] parametersBytes = parameters == null
+                    ? Utf8Helper.EncodeNullTerminated("")
+                    : Utf8Helper.EncodeNullTerminated(parameters);
+
+                ZGetOptions nativeOpts = ZGetOptions.Default();
+                try
+                {
+                    if (options?.Target is ZQueryTarget target)
+                        nativeOpts.SetTarget(target);
+                    if (options?.Consolidation is ZConsolidationMode mode)
+                    {
+                        ZQueryConsolidation consolidation;
+                        switch (mode)
+                        {
+                            case ZConsolidationMode.Auto: consolidation = ZQueryConsolidation.Auto(); break;
+                            case ZConsolidationMode.None: consolidation = ZQueryConsolidation.None(); break;
+                            case ZConsolidationMode.Monotonic: consolidation = ZQueryConsolidation.Monotonic(); break;
+                            case ZConsolidationMode.Latest: consolidation = ZQueryConsolidation.Latest(); break;
+                            default: consolidation = ZQueryConsolidation.Default(); break;
+                        }
+                        nativeOpts.SetConsolidation(consolidation);
+                    }
+                    if (options?.Payload is byte[] payload)
+                        nativeOpts.SetPayload(BytesFactory.FromBuffer(payload));
+                    if (options?.Encoding is EncodingPreset encoding)
+                        nativeOpts.SetEncoding(encoding.ToLoanedEncoding());
+                    if (options?.CongestionControl is ZCongestionControl cc)
+                        nativeOpts.SetCongestionControl(cc);
+                    if (options?.IsExpress is bool express)
+                        nativeOpts.SetIsExpress(express);
+                    if (options?.AllowedDestination is ZLocality dest)
+                        nativeOpts.SetAllowedDestination(dest);
+                    if (options?.AcceptReplies is ZReplyKeyExpr acceptReplies)
+                        nativeOpts.SetAcceptReplies(acceptReplies);
+                    if (options?.Priority is ZPriority priority)
+                        nativeOpts.SetPriority(priority);
+                    if (options?.Attachment is byte[] attachment)
+                        nativeOpts.SetAttachment(BytesFactory.FromBuffer(attachment));
+                    if (options?.TimeoutMs is ulong timeoutMs)
+                        nativeOpts.SetTimeoutMs(timeoutMs);
+                    if (zenohToken != null)
+                        nativeOpts.SetCancellationToken(zenohToken);
+
+                    result = owned.Loan().Get(keyExpr.LoanInternal(), parametersBytes, closure, nativeOpts);
+                    return result.IsOk;
+                }
+                finally
+                {
+                    nativeOpts.Dispose();
+                }
+            }
+            catch
+            {
+                reg.Dispose();
+                zenohTokenClone?.Dispose();
+                zenohToken?.Dispose();
+                closure.Dispose();
+                throw;
             }
         }
 

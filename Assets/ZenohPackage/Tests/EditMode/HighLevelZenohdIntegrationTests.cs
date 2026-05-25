@@ -395,6 +395,447 @@ namespace Zenoh.Tests
             Assert.Fail("Publisher did not report a matching subscriber within 5 seconds.");
         }
 
+        [Test]
+        public void Queryable_ReplyString_DeliveredToGet()
+        {
+            const string keyExpr = "unity/test/highlevel/queryreply/string";
+            const string replyPayload = "hello from queryable";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                bool receivedIsOk = false;
+                string receivedPayload = null;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    query.Reply(query.KeyExpr, replyPayload);
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, reply =>
+                        {
+                            receivedIsOk = reply.IsOk;
+                            if (reply.IsOk)
+                                receivedPayload = reply.OkSample.Value.PayloadAsString();
+                            received.Set();
+                        });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No reply received within 5 seconds.");
+                    Assert.That(receivedIsOk, Is.True);
+                    Assert.That(receivedPayload, Is.EqualTo(replyPayload));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Queryable_ReplyBytes_DeliveredToGet()
+        {
+            const string keyExpr = "unity/test/highlevel/queryreply/bytes";
+            byte[] replyPayload = MakeByteSequence(42, 256);
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                bool receivedIsOk = false;
+                byte[] receivedPayload = null;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    query.Reply(query.KeyExpr, replyPayload);
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, reply =>
+                        {
+                            receivedIsOk = reply.IsOk;
+                            if (reply.IsOk)
+                                receivedPayload = reply.OkSample.Value.PayloadAsBytes();
+                            received.Set();
+                        });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No reply received within 5 seconds.");
+                    Assert.That(receivedIsOk, Is.True);
+                    Assert.That(receivedPayload, Is.EqualTo(replyPayload));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Queryable_ReplyErr_DeliveredToGet()
+        {
+            const string keyExpr = "unity/test/highlevel/queryreply/err";
+            const string errorPayload = "something went wrong";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                bool receivedIsOk = true;
+                string receivedError = null;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    query.ReplyErr(errorPayload);
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, reply =>
+                        {
+                            receivedIsOk = reply.IsOk;
+                            if (!reply.IsOk)
+                                receivedError = reply.ErrorPayloadAsString();
+                            received.Set();
+                        });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No reply received within 5 seconds.");
+                    Assert.That(receivedIsOk, Is.False);
+                    Assert.That(receivedError, Is.EqualTo(errorPayload));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Queryable_ReplyDel_DeliveredToGet()
+        {
+            const string keyExpr = "unity/test/highlevel/queryreply/del";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                bool receivedIsOk = false;
+                ZSampleKind receivedKind = ZSampleKind.Put;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    query.ReplyDel(query.KeyExpr);
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, reply =>
+                        {
+                            receivedIsOk = reply.IsOk;
+                            if (reply.IsOk)
+                                receivedKind = reply.OkSample.Value.Kind;
+                            received.Set();
+                        });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No reply received within 5 seconds.");
+                    Assert.That(receivedIsOk, Is.True);
+                    Assert.That(receivedKind, Is.EqualTo(ZSampleKind.Delete));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Queryable_TryDeclare_WithValidArgsReturnsTrue()
+        {
+            using (Session session = OpenClientSession())
+            using (KeyExpr keyExpr = KeyExpr.Parse("unity/test/highlevel/queryable/trydeclare"))
+            {
+                bool ok = Queryable.TryDeclare(session, keyExpr, _ => { }, null, out Queryable queryable, out ZResult result);
+                try
+                {
+                    Assert.That(ok, Is.True, result.ToString());
+                    Assert.That(queryable, Is.Not.Null);
+                }
+                finally
+                {
+                    queryable?.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Session_Get_WithParameters_QueryReceivesParameters()
+        {
+            const string keyExpr = "unity/test/highlevel/get/parameters";
+            const string expectedParams = "key=value&foo=bar";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                string receivedParams = null;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    receivedParams = query.Parameters;
+                    query.Reply(query.KeyExpr, "ok");
+                    received.Set();
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, _ => { }, parameters: expectedParams);
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "Queryable did not receive query within 5 seconds.");
+                    Assert.That(receivedParams, Is.EqualTo(expectedParams));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Session_Get_WithPayload_QueryReceivesPayload()
+        {
+            const string keyExpr = "unity/test/highlevel/get/payload";
+            byte[] expectedPayload = MakeByteSequence(10, 128);
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                byte[] receivedPayload = null;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    receivedPayload = query.PayloadAsBytes();
+                    query.Reply(query.KeyExpr, "ok");
+                    received.Set();
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, _ => { }, options: new GetOptions { Payload = expectedPayload });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "Queryable did not receive query within 5 seconds.");
+                    Assert.That(receivedPayload, Is.EqualTo(expectedPayload));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Session_Get_WithEncoding_QueryReceivesEncoding()
+        {
+            const string keyExpr = "unity/test/highlevel/get/encoding";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    query.Reply(query.KeyExpr, "ok", new QueryReplyOptions { Encoding = EncodingPreset.TextPlain });
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    string replyEncoding = null;
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, reply =>
+                        {
+                            if (reply.IsOk)
+                                replyEncoding = reply.OkSample.Value.EncodingMime;
+                            received.Set();
+                        });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No reply received within 5 seconds.");
+                    Assert.That(replyEncoding, Does.Contain("text/plain"));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Session_Get_WithAttachment_QueryReceivesAttachment()
+        {
+            const string keyExpr = "unity/test/highlevel/get/attachment";
+            byte[] expectedAttachment = MakeByteSequence(99, 64);
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                byte[] replyAttachment = null;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    query.Reply(query.KeyExpr, "ok", new QueryReplyOptions { Attachment = expectedAttachment });
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, reply =>
+                        {
+                            if (reply.IsOk)
+                                replyAttachment = reply.OkSample.Value.AttachmentAsBytes();
+                            received.Set();
+                        });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No reply received within 5 seconds.");
+                    Assert.That(replyAttachment, Is.EqualTo(expectedAttachment));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Session_TryGet_ReturnsTrueOnSuccess()
+        {
+            const string keyExpr = "unity/test/highlevel/get/tryget";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    query.Reply(query.KeyExpr, "pong");
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        bool ok = gSession.TryGet(ke, reply =>
+                        {
+                            received.Set();
+                        }, null, null, default, out ZResult result);
+
+                        Assert.That(ok, Is.True, result.ToString());
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No reply received within 5 seconds.");
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Session_Get_CancellationToken_CancelsGet()
+        {
+            const string keyExpr = "unity/test/highlevel/get/cancel";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (CancellationTokenSource cts = new CancellationTokenSource())
+            {
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query => { });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, reply => { },
+                            options: new GetOptions { TimeoutMs = 30000 },
+                            cancellationToken: cts.Token);
+                    }
+
+                    cts.Cancel();
+
+                    Thread.Sleep(2000);
+                    Assert.That(sw.ElapsedMilliseconds, Is.LessThan(10000),
+                        "Get should have been cancelled well before the 30s timeout.");
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        private static Queryable DeclareQueryable(Session session, string keyExprString, Action<QueryView> onQuery)
+        {
+            using (KeyExpr keyExpr = KeyExpr.Parse(keyExprString))
+            {
+                return Queryable.Declare(session, keyExpr, onQuery);
+            }
+        }
+
         private static byte[] MakeByteSequence(int start, int count)
         {
             byte[] buffer = new byte[count];
