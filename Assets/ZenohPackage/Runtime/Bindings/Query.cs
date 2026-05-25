@@ -101,6 +101,13 @@ namespace Zenoh.Bindings
             Native.is_express = value;
         }
 
+        /// <summary>
+        /// Sets the timestamp for the reply.
+        ///
+        /// UNSAFE: Stores a borrowed pointer without taking ownership.
+        /// The caller must keep the source alive until the native call completes;
+        /// disposing the source beforehand causes a native crash (dangling pointer).
+        /// </summary>
         public void SetTimestamp(ZLoanedTimestamp timestamp)
         {
             if (timestamp == null)
@@ -113,6 +120,13 @@ namespace Zenoh.Bindings
             }
         }
 
+        /// <summary>
+        /// Sets the source info for the reply.
+        ///
+        /// UNSAFE: Stores a borrowed pointer without taking ownership.
+        /// The caller must keep the source alive until the native call completes;
+        /// disposing the source beforehand causes a native crash (dangling pointer).
+        /// </summary>
         public void SetSourceInfo(ZLoanedSourceInfo sourceInfo)
         {
             if (sourceInfo == null)
@@ -308,6 +322,13 @@ namespace Zenoh.Bindings
             Native.is_express = value;
         }
 
+        /// <summary>
+        /// Sets the timestamp for the delete reply.
+        ///
+        /// UNSAFE: Stores a borrowed pointer without taking ownership.
+        /// The caller must keep the source alive until the native call completes;
+        /// disposing the source beforehand causes a native crash (dangling pointer).
+        /// </summary>
         public void SetTimestamp(ZLoanedTimestamp timestamp)
         {
             if (timestamp == null)
@@ -320,6 +341,13 @@ namespace Zenoh.Bindings
             }
         }
 
+        /// <summary>
+        /// Sets the source info for the delete reply.
+        ///
+        /// UNSAFE: Stores a borrowed pointer without taking ownership.
+        /// The caller must keep the source alive until the native call completes;
+        /// disposing the source beforehand causes a native crash (dangling pointer).
+        /// </summary>
         public void SetSourceInfo(ZLoanedSourceInfo sourceInfo)
         {
             if (sourceInfo == null)
@@ -402,6 +430,13 @@ namespace Zenoh.Bindings
             return value;
         }
 
+        /// <summary>
+        /// Creates an owned query by moving ownership from a loaned query.
+        ///
+        /// UNSAFE: Invalidates ALL outstanding loans of the same underlying
+        /// query. Using any of those loans after this call causes a native
+        /// crash (use-after-free). Prefer <see cref="CreateClone"/> when in doubt.
+        /// </summary>
         public static ZOwnedQuery CreateTakeFromLoaned(ZLoanedQuery source)
         {
             if (source == null)

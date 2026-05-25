@@ -64,6 +64,15 @@ namespace Zenoh.Bindings
             return new OwnedStorage<z_owned_closure_query_t>(ptr);
         }
 
+        /// <summary>
+        /// Dispatches a native query callback to the managed delegate.
+        ///
+        /// UNSAFE CALLBACK LIFETIME: The <see cref="ZLoanedQuery"/> passed to
+        /// the user callback is valid ONLY during this call. Storing it and
+        /// using it after the callback returns causes a native crash
+        /// (use-after-free). To retain, call <see cref="ZOwnedQuery.CreateClone"/>
+        /// inside the callback.
+        /// </summary>
         [MonoPInvokeCallback(typeof(ZenohNative.z_closure_query_call_delegate))]
         private static void DispatchCall(z_loaned_query_t* query, void* context)
         {

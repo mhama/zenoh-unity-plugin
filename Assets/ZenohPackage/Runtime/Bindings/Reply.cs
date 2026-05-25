@@ -26,6 +26,13 @@ namespace Zenoh.Bindings
             return value;
         }
 
+        /// <summary>
+        /// Creates an owned reply by moving ownership from a loaned reply.
+        ///
+        /// UNSAFE: Invalidates ALL outstanding loans of the same underlying
+        /// reply. Using any of those loans after this call causes a native
+        /// crash (use-after-free). Prefer <see cref="CreateClone"/> when in doubt.
+        /// </summary>
         public static ZOwnedReply CreateTakeFromLoaned(ZLoanedReply source)
         {
             if (source == null)

@@ -95,6 +95,15 @@ namespace Zenoh.Bindings
             return new OwnedStorage<z_owned_closure_reply_t>(ptr);
         }
 
+        /// <summary>
+        /// Dispatches a native reply callback to the managed delegate.
+        ///
+        /// UNSAFE CALLBACK LIFETIME: The <see cref="ZLoanedReply"/> passed to
+        /// the user callback is valid ONLY during this call. Storing it and
+        /// using it after the callback returns causes a native crash
+        /// (use-after-free). To retain, call <see cref="ZOwnedReply.CreateClone"/>
+        /// inside the callback.
+        /// </summary>
         [MonoPInvokeCallback(typeof(ZenohNative.z_closure_reply_call_delegate))]
         private static void DispatchCall(z_loaned_reply_t* reply, void* context)
         {
@@ -309,6 +318,13 @@ namespace Zenoh.Bindings
             Native.priority = (z_priority_t)value;
         }
 
+        /// <summary>
+        /// Sets the source info for the query.
+        ///
+        /// UNSAFE: Stores a borrowed pointer without taking ownership.
+        /// The caller must keep the source alive until the native call completes;
+        /// disposing the source beforehand causes a native crash (dangling pointer).
+        /// </summary>
         public void SetSourceInfo(ZLoanedSourceInfo sourceInfo)
         {
             if (sourceInfo == null)
