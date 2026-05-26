@@ -1,11 +1,38 @@
 ## Zenoh Plugin Project for Unity
 
 This is experimental Zenoh Plugin for Unity.
-This plugin utilizes zenoh-c with csbindgen generated binding code. So all features can be used (ideally).
-
-A few convenience wrapper classes are included, but they currently cover only a small subset of Zenoh's features. The native bridge functions cover more, but are harder to use directly.
+This plugin utilizes zenoh-c with csbindgen generated binding code.
 
 Zenoh version: 1.9.0
+
+### Architecture: 3-layer wrapper design
+
+This plugin provides three layers of abstraction. Users typically write code against the **HighLevel** layer.
+
+| Layer | Namespace | Role |
+|---|---|---|
+| **Plugins** | `ZenohNative` (P/Invoke) | csbindgen auto-generated native bindings. Not hand-edited. |
+| **Bindings** | `Zenoh.Bindings` (`ZOwned*` / `ZLoaned*` / `Z*Options`) | Memory-safe 1:1 C# projection of zenoh-c. Preserves native ownership semantics (`Owned`/`Loaned`/`Take`). Returns `ZResult`, never throws. |
+| **HighLevel** | `Zenoh.HighLevel` (`Session` / `Publisher` / `Subscriber` / `Queryable` / …) | Ergonomic API for end-users. Exceptions on failure (`ZenohException`), `byte[]`/`string` payloads, POCO option classes. Hides the `Owned`/`Loaned`/`Take` machinery. |
+
+#### Covered use cases (HighLevel)
+
+- **Session**: Open / Close
+- **Pub/Sub**: Publisher (Put / PutZeroCopy), Subscriber (callback-based)
+- **Query/Reply**: Queryable (Reply / ReplyErr / ReplyDel), Session.Get (with CancellationToken support)
+- **Key Expression**: Parse / TryParse
+- **Config**: Default / FromJsonString / FromFile
+
+Features not yet covered by HighLevel (e.g. Querier, Liveliness, SharedMemory) are also not yet implemented in the Bindings layer. They will be added as needed.
+
+#### AI-assisted code generation
+
+Each layer has a generation rules document that defines naming conventions, ownership patterns, error handling, and file layout:
+
+- `Runtime/Bindings/00_bindings-generation-rules.md` — rules for projecting `ZenohNative.g.cs` into Bindings classes
+- `Runtime/HighLevel/00_highlevel_wrapper_generation_rules.md` — rules for wrapping Bindings types into the HighLevel API
+
+These rule documents are designed so that an AI coding assistant can generate new wrappers mechanically. Given a rule document and a target Bindings type, the assistant can produce a conformant HighLevel wrapper with the correct ownership handling, Dispose patterns, and API shape. Implementation plans (e.g. `Specs/query-reply-highlevel-plan.md`) reference these rules and serve as input for AI-driven implementation.
 
 ## Platforms
 
@@ -33,17 +60,23 @@ https://github.com/mhama/zenoh-unity-plugin.git?path=Assets/ZenohPackage
 
 ## About samples
 
-### ZenohSimplePubSubSample scene / ZenohSimplePubSubTest script
+Sample scenes are located under `Assets/ZenohSampleScenes/`.
 
-This sample will publish strings on "myhome/kitchen/temp" key and also subscribe the same key.
-You can subscribe the key or publish into the key using different zenoh implementations.
+### HighLevel API samples (`HighLevelWrapperTests/`)
 
-### ZenohCameraReceiverSample scene / ZenohCameraReceiverTest script
+- **SimplePubSubHighLevelTest** — Publish/Subscribe using the HighLevel API
+- **QueryableReplyHighLevelTest** — Queryable (server side) that replies to queries
+- **QueryGetHighLevelTest** — Session.Get (client side) that sends queries and receives replies
+- **CameraPubSubHighLevelSample** — Camera image Pub/Sub using the HighLevel API
 
-This sample will subscribe jpeg sequence on "rpi/camera/image_jpeg" key and reflect the images on the specified renderer.
+### Bindings API samples (`BindingTests/`)
 
-This project will publish camera images on Raspberry Pi using zenoh-cpp
-https://github.com/mhama/zenoh-rpi-camera-publisher-sample
+- **QueryableReplyBindingTest / QueryGetBindingTest** — Query/Reply using the Bindings layer directly
+
+### Legacy wrapper samples (`LegacyWrapperTests/`)
+
+- **SimplePubSubTest** — Pub/Sub using legacy wrappers (not recommended for new code)
+- **CameraPublisherTest / CameraReceiverTest** — Camera image Pub/Sub using legacy wrappers
 
 ## How to make DLL / ZenohNative.g.cs for each platforms
 
