@@ -40,23 +40,23 @@ namespace Zenoh.HighLevel
             if (onQuery == null)
                 throw new ArgumentNullException(nameof(onQuery));
 
-            ZOwnedClosureQuery closure = new ZOwnedClosureQuery();
-            ZOwnedQueryable owned = new ZOwnedQueryable();
-
-            try
+            using (ZOwnedClosureQuery closure = new ZOwnedClosureQuery())
             {
-                ZClosureQueryCall call = (loanedQuery, _) => onQuery(new QueryView(loanedQuery));
-                closure.Set(call, null, IntPtr.Zero);
-
-                ZQueryableOptions nativeOpts = ZQueryableOptions.Default();
+                ZOwnedQueryable owned = new ZOwnedQueryable();
                 try
                 {
-                    if (options?.Complete is bool complete)
-                        nativeOpts.SetComplete(complete);
-                    if (options?.AllowedOrigin is ZLocality locality)
-                        nativeOpts.SetAllowedOrigin(locality);
+                    ZClosureQueryCall call = (loanedQuery, _) => onQuery(new QueryView(loanedQuery));
+                    closure.Set(call, null, IntPtr.Zero);
 
-                    result = owned.Declare(session.LoanInternal(), keyExpr.LoanInternal(), closure, nativeOpts);
+                    using (ZQueryableOptions nativeOpts = ZQueryableOptions.Default())
+                    {
+                        if (options?.Complete is bool complete)
+                            nativeOpts.SetComplete(complete);
+                        if (options?.AllowedOrigin is ZLocality locality)
+                            nativeOpts.SetAllowedOrigin(locality);
+
+                        result = owned.Declare(session.LoanInternal(), keyExpr.LoanInternal(), closure, nativeOpts);
+                    }
 
                     if (!result.IsOk)
                     {
@@ -68,16 +68,11 @@ namespace Zenoh.HighLevel
                     queryable = new Queryable(owned);
                     return true;
                 }
-                finally
+                catch
                 {
-                    nativeOpts.Dispose();
+                    owned.Dispose();
+                    throw;
                 }
-            }
-            catch
-            {
-                closure.Dispose();
-                owned.Dispose();
-                throw;
             }
         }
 
