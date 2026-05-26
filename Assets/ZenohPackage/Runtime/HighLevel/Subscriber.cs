@@ -34,19 +34,18 @@ namespace Zenoh.HighLevel
             if (onSample == null)
                 throw new ArgumentNullException(nameof(onSample));
 
-            ZOwnedClosureSample closure = new ZOwnedClosureSample();
-            ZOwnedSubscriber owned = new ZOwnedSubscriber();
-
-            try
+            using (ZOwnedClosureSample closure = new ZOwnedClosureSample())
             {
-                ZClosureSampleCall call = (loanedSample, _) => onSample(new SampleView(loanedSample));
-                closure.Set(call, null, IntPtr.Zero);
-
-                using (ZSubscriberOptions options = ZSubscriberOptions.Default())
+                ZOwnedSubscriber owned = new ZOwnedSubscriber();
+                try
                 {
-                    // Declare consumes the closure (Take) regardless of success/failure,
-                    // so closure.Dispose() afterwards is a no-op.
-                    result = owned.Declare(session.LoanInternal(), keyExpr.LoanInternal(), closure, options);
+                    ZClosureSampleCall call = (loanedSample, _) => onSample(new SampleView(loanedSample));
+                    closure.Set(call, null, IntPtr.Zero);
+
+                    using (ZSubscriberOptions options = ZSubscriberOptions.Default())
+                    {
+                        result = owned.Declare(session.LoanInternal(), keyExpr.LoanInternal(), closure, options);
+                    }
 
                     if (!result.IsOk)
                     {
@@ -58,12 +57,11 @@ namespace Zenoh.HighLevel
                     subscriber = new Subscriber(owned);
                     return true;
                 }
-            }
-            catch
-            {
-                closure.Dispose();
-                owned.Dispose();
-                throw;
+                catch
+                {
+                    owned.Dispose();
+                    throw;
+                }
             }
         }
 
