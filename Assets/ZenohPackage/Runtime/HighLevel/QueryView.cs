@@ -81,6 +81,22 @@ namespace Zenoh.HighLevel
             return attachment == null ? null : attachment.ToByteArray();
         }
 
+        /// <summary>
+        /// Retains this query so it can be inspected and replied to after the
+        /// callback returns — including from another thread.
+        ///
+        /// MUST be called inside the onQuery callback, while this view is still
+        /// valid. Clones the query via z_query_clone (the returned
+        /// <see cref="DeferredQuery"/> is independent of this view), so the
+        /// callback may return without replying. The caller owns the returned
+        /// handle and MUST finalize it exactly once via
+        /// <see cref="DeferredQuery.Dispose"/>.
+        /// </summary>
+        public DeferredQuery Defer()
+        {
+            return new DeferredQuery(ZOwnedQuery.CreateClone(loaned), KeyExpr);
+        }
+
         public void Reply(string keyExpr, byte[] payload, QueryReplyOptions options = null)
         {
             TryReplyCore(keyExpr, BytesFactory.FromBuffer(payload), options, out ZResult result);

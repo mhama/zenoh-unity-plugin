@@ -828,6 +828,318 @@ namespace Zenoh.Tests
             }
         }
 
+        [Test]
+        public void Queryable_DeferredReply_FromAnotherThread_DeliveredToGet()
+        {
+            const string keyExpr = "unity/test/highlevel/deferred/string";
+            const string replyPayload = "deferred hello";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                bool receivedIsOk = false;
+                string receivedPayload = null;
+                int callbackThreadId = -1;
+                int replyThreadId = -2;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    callbackThreadId = Thread.CurrentThread.ManagedThreadId;
+
+                    // Retain the query, then return immediately without replying.
+                    DeferredQuery responder = query.Defer();
+                    ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        Thread.Sleep(50);
+                        replyThreadId = Thread.CurrentThread.ManagedThreadId;
+                        try
+                        {
+                            // Default key expression == the query's own key expression.
+                            responder.Reply(replyPayload);
+                        }
+                        finally
+                        {
+                            responder.Dispose();
+                        }
+                    });
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, reply =>
+                        {
+                            receivedIsOk = reply.IsOk;
+                            if (reply.IsOk)
+                                receivedPayload = reply.OkSample.Value.PayloadAsString();
+                            received.Set();
+                        }, options: new GetOptions { TimeoutMs = 5000 });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No deferred reply received within 5 seconds.");
+                    Assert.That(receivedIsOk, Is.True);
+                    Assert.That(receivedPayload, Is.EqualTo(replyPayload));
+                    Assert.That(replyThreadId, Is.Not.EqualTo(callbackThreadId),
+                        "Reply was expected to be sent from a different thread than the callback.");
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Queryable_DeferredReplyErr_FromAnotherThread_DeliveredToGet()
+        {
+            const string keyExpr = "unity/test/highlevel/deferred/err";
+            const string errorPayload = "deferred failure";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                bool receivedIsOk = true;
+                string receivedError = null;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    DeferredQuery responder = query.Defer();
+                    ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        Thread.Sleep(50);
+                        try
+                        {
+                            responder.ReplyErr(errorPayload);
+                        }
+                        finally
+                        {
+                            responder.Dispose();
+                        }
+                    });
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, reply =>
+                        {
+                            receivedIsOk = reply.IsOk;
+                            if (!reply.IsOk)
+                                receivedError = reply.ErrorPayloadAsString();
+                            received.Set();
+                        }, options: new GetOptions { TimeoutMs = 5000 });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No deferred error reply received within 5 seconds.");
+                    Assert.That(receivedIsOk, Is.False);
+                    Assert.That(receivedError, Is.EqualTo(errorPayload));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void DeferredQuery_ExposesPayloadAndParameters_AfterCallbackReturns()
+        {
+            const string keyExpr = "unity/test/highlevel/deferred/readback";
+            const string expectedParams = "cmd=connect&n=1";
+            byte[] expectedPayload = MakeByteSequence(7, 96);
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                string readBackParams = null;
+                byte[] readBackPayload = null;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    // Retain, then read the request data off the handle later — the
+                    // clone keeps payload/parameters, so they need not be captured
+                    // separately before the callback returns.
+                    DeferredQuery responder = query.Defer();
+                    ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        Thread.Sleep(50);
+                        try
+                        {
+                            readBackParams = responder.Parameters;
+                            readBackPayload = responder.PayloadAsBytes();
+                            responder.Reply("ok");
+                        }
+                        finally
+                        {
+                            responder.Dispose();
+                        }
+                    });
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, _ => received.Set(),
+                            parameters: expectedParams,
+                            options: new GetOptions { Payload = expectedPayload, TimeoutMs = 5000 });
+                    }
+
+                    Assert.That(received.Wait(5000), Is.True,
+                        "No reply received within 5 seconds.");
+                    Assert.That(readBackParams, Is.EqualTo(expectedParams));
+                    Assert.That(readBackPayload, Is.EqualTo(expectedPayload));
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void Queryable_DeferredReply_WithNestedGet_DoesNotDeadlock()
+        {
+            // Regression for the deadlock: the control queryable must NOT block its
+            // callback thread waiting on a nested same-session Get. With Defer() the
+            // callback returns immediately, the nested Get runs off-thread, and the
+            // reply is sent from the nested Get's reply callback.
+            const string outerKey = "unity/test/highlevel/deferred/nested/outer";
+            const string innerKey = "unity/test/highlevel/deferred/nested/inner";
+            const string innerValue = "resolved-by-nested-get";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim received = new ManualResetEventSlim(false))
+            {
+                bool receivedIsOk = false;
+                string receivedPayload = null;
+
+                Queryable innerQueryable = DeclareQueryable(qSession, innerKey, query =>
+                {
+                    query.Reply(query.KeyExpr, innerValue);
+                });
+
+                Queryable outerQueryable = DeclareQueryable(qSession, outerKey, query =>
+                {
+                    DeferredQuery responder = query.Defer();
+
+                    // Return immediately; do the nested Get on the SAME session from a
+                    // worker thread and reply once the nested reply arrives.
+                    ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        using (KeyExpr innerKe = KeyExpr.Parse(innerKey))
+                        {
+                            qSession.Get(innerKe, innerReply =>
+                            {
+                                try
+                                {
+                                    if (innerReply.IsOk)
+                                        responder.Reply(innerReply.OkSample.Value.PayloadAsString());
+                                    else
+                                        responder.ReplyErr("nested get failed");
+                                }
+                                finally
+                                {
+                                    responder.Dispose();
+                                }
+                            }, options: new GetOptions { TimeoutMs = 5000 });
+                        }
+                    });
+                });
+
+                try
+                {
+                    Thread.Sleep(300);
+
+                    using (KeyExpr ke = KeyExpr.Parse(outerKey))
+                    {
+                        gSession.Get(ke, reply =>
+                        {
+                            receivedIsOk = reply.IsOk;
+                            if (reply.IsOk)
+                                receivedPayload = reply.OkSample.Value.PayloadAsString();
+                            received.Set();
+                        }, options: new GetOptions { TimeoutMs = 8000 });
+                    }
+
+                    Assert.That(received.Wait(8000), Is.True,
+                        "Deferred reply with nested Get deadlocked or timed out.");
+                    Assert.That(receivedIsOk, Is.True);
+                    Assert.That(receivedPayload, Is.EqualTo(innerValue));
+                }
+                finally
+                {
+                    outerQueryable.Dispose();
+                    innerQueryable.Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void DeferredQuery_DisposeWithoutReply_DoesNotDeliverReplyAndIsIdempotent()
+        {
+            const string keyExpr = "unity/test/highlevel/deferred/abandon";
+
+            using (Session qSession = OpenClientSession())
+            using (Session gSession = OpenClientSession())
+            using (ManualResetEventSlim replyDelivered = new ManualResetEventSlim(false))
+            using (ManualResetEventSlim abandoned = new ManualResetEventSlim(false))
+            {
+                DeferredQuery captured = null;
+
+                Queryable queryable = DeclareQueryable(qSession, keyExpr, query =>
+                {
+                    DeferredQuery responder = query.Defer();
+                    captured = responder;
+                    ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        Thread.Sleep(50);
+                        responder.Dispose();        // abandon without replying
+                        responder.Dispose();        // idempotent: must not throw
+                        abandoned.Set();
+                    });
+                });
+
+                try
+                {
+                    Thread.Sleep(200);
+
+                    using (KeyExpr ke = KeyExpr.Parse(keyExpr))
+                    {
+                        gSession.Get(ke, _ => replyDelivered.Set(),
+                            options: new GetOptions { TimeoutMs = 3000 });
+                    }
+
+                    Assert.That(abandoned.Wait(3000), Is.True, "Abandon worker did not run.");
+                    Assert.That(replyDelivered.Wait(1500), Is.False,
+                        "No reply should be delivered after Dispose without Reply.");
+
+                    // Use-after-finalize is a programmer error and must throw.
+                    Assert.That(() => captured.Reply("late"),
+                        Throws.TypeOf<ObjectDisposedException>());
+                    Assert.That(captured.IsValid, Is.False);
+                }
+                finally
+                {
+                    queryable.Dispose();
+                }
+            }
+        }
+
         private static Queryable DeclareQueryable(Session session, string keyExprString, Action<QueryView> onQuery)
         {
             using (KeyExpr keyExpr = KeyExpr.Parse(keyExprString))
